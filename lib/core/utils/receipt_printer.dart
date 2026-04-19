@@ -7,7 +7,6 @@ import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import '../../models/fee_model.dart';
 import '../../core/constants/app_colors.dart';
 import '../../services/registration_service.dart';
@@ -436,11 +435,17 @@ class _PrintDialogState extends State<_PrintDialog>
             child: Column(
               children: [
                 Expanded(
-                  child: SfPdfViewer.memory(
-                    widget.pdfBytes,
-                    canShowPaginationDialog: true,
-                    canShowScrollHead: true,
-                    pageSpacing: 16,
+                  child: PdfPreview(
+                    build: (_) async => widget.pdfBytes,
+                    allowPrinting: false,
+                    allowSharing: false,
+                    canChangePageFormat: false,
+                    canChangeOrientation: false,
+                    canDebug: false,
+                    useActions: false,
+                    maxPageWidth: 700,
+                    pdfFileName:
+                        '${widget.fileNamePrefix}_${widget.documentId}.pdf',
                   ),
                 ),
               ],
