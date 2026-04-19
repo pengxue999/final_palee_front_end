@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    
+    {
+      "name": "Flutter Windows (ASCII path)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "D:/A/palee_elite_training_center_windows",
+      "deviceId": "windows"
+    }
+  ]
+}
