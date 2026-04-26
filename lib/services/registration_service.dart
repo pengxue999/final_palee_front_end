@@ -50,6 +50,21 @@ class RegistrationService {
     _http.handleJson(response);
   }
 
+  Future<Uint8List> getRegistrationReceiptPdf(String registrationId) async {
+    final response = await _http.get(
+      '/registrations/$registrationId/receipt-pdf',
+      headers: {'Accept': 'application/pdf'},
+      timeout: const Duration(seconds: 90),
+    );
+
+    if (response.statusCode != 200) {
+      _http.handleJson(response);
+      throw Exception('ບໍ່ສາມາດສ້າງ PDF ໄດ້');
+    }
+
+    return response.bodyBytes;
+  }
+
   Future<Uint8List> createRegistrationReceiptPdf({
     required String registrationId,
     required String registrationDate,

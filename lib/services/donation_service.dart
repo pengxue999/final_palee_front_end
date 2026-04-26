@@ -1,4 +1,5 @@
 import '../core/utils/http_helper.dart';
+import 'dart:typed_data';
 import '../models/donation_model.dart';
 
 class DonationService {
@@ -20,10 +21,7 @@ class DonationService {
   }
 
   Future<DonationSingleResponse> createDonation(DonationRequest request) async {
-    final response = await _http.post(
-      '/donations',
-      body: request.toJson(),
-    );
+    final response = await _http.post('/donations', body: request.toJson());
     return DonationSingleResponse.fromJson(_http.handleJson(response));
   }
 
@@ -41,5 +39,20 @@ class DonationService {
   Future<void> deleteDonation(int donationId) async {
     final response = await _http.delete('/donations/$donationId');
     _http.handleJson(response);
+  }
+
+  Future<Uint8List> getDonationCertificatePdf(int donationId) async {
+    final response = await _http.get(
+      '/donations/$donationId/certificate-pdf',
+      headers: {'Accept': 'application/pdf'},
+      timeout: const Duration(seconds: 90),
+    );
+
+    if (response.statusCode != 200) {
+      _http.handleJson(response);
+      throw Exception('ບໍ່ສາມາດສ້າງ PDF ໄດ້');
+    }
+
+    return response.bodyBytes;
   }
 }

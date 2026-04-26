@@ -1,10 +1,8 @@
 import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
-
 import '../../services/tuition_payment_service.dart';
 import '../../widgets/app_toast.dart';
-import 'receipt_printer.dart';
+import 'pdf_print_dialog.dart';
 
 final TuitionPaymentService _tuitionPaymentHistoryService =
     TuitionPaymentService();
@@ -24,7 +22,7 @@ Future<void> showTuitionPaymentHistoryPrintDialog({
 
     onPreviewReady?.call();
 
-    await showPdfPrintDialog(
+    await showPdfPreviewDialog(
       context: context,
       pdfBytes: Uint8List.fromList(pdfBytes),
       documentId: registrationId,

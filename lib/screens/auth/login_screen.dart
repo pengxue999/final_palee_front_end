@@ -245,22 +245,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                               ),
                             ),
                           ),
-
-                          const SizedBox(height: 24),
-
-                          _FeatureRow(),
-
-                          const SizedBox(height: 28),
-                          Text(
-                            '© 2026 Palee Elite Training Center',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontFamily: 'NotoSansLao',
-                              fontSize: 12,
-                              color: Colors.white.withOpacity(0.3),
-                              height: 1.6,
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -454,55 +438,6 @@ class _LoginButtonState extends State<_LoginButton>
           ),
         ),
       ),
-    );
-  }
-}
-
-class _FeatureRow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const chips = [
-      (Icons.people_alt_rounded, 'ຈັດການຂໍ້ມູນ'),
-      (Icons.assignment_rounded, 'ລົງທະບຽນ'),
-      (Icons.payments_rounded, 'ເບີກຈ່າຍເງີນສອນ'),
-      (Icons.bar_chart_rounded, 'ລາຍງານ'),
-    ];
-
-    return Wrap(
-      alignment: WrapAlignment.center,
-      spacing: 8,
-      runSpacing: 8,
-      children: chips
-          .map(
-            (c) => Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.07),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
-                  width: 0.8,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(c.$1, color: Colors.white.withOpacity(0.6), size: 12),
-                  const SizedBox(width: 5),
-                  Text(
-                    c.$2,
-                    style: TextStyle(
-                      fontFamily: 'NotoSansLao',
-                      color: Colors.white.withOpacity(0.6),
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(),
     );
   }
 }

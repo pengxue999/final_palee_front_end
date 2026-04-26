@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:palee_elite_training_center/core/utils/receipt_printer.dart';
+import 'package:palee_elite_training_center/core/utils/registration_receipt_printer.dart';
 import 'package:palee_elite_training_center/models/discount_model.dart';
 import 'package:palee_elite_training_center/models/province_model.dart';
 import 'package:palee_elite_training_center/models/district_model.dart';
@@ -280,29 +280,12 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
 
     if (success && mounted) {
       final lastReg = ref.read(registrationProvider).registrations.last;
-      final selectedFeesList = _fees
-          .where((f) => _selectedFeeIds.contains(f.feeId))
-          .toList();
-      final studentFullName =
-          _selectedStudent?.fullName ?? lastReg.studentFullName;
-      final tuition = _tuitionFee;
-      final total = _totalFee;
-      final discount = _selectedDiscountAmount;
-      final net = _netFee;
-
       if (mounted) {
         setState(() => _isPreparingPrint = true);
         try {
           await showRegistrationPrintDialog(
             context: context,
             registrationId: lastReg.registrationId,
-            registrationDate: lastReg.registrationDate,
-            studentName: studentFullName,
-            selectedFees: selectedFeesList,
-            tuitionFee: tuition,
-            totalFee: total,
-            discountAmount: discount,
-            netFee: net,
             onPreviewReady: () {
               if (mounted && _isPreparingPrint) {
                 setState(() => _isPreparingPrint = false);

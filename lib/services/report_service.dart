@@ -5,6 +5,55 @@ import '../models/report_models.dart';
 class ReportService {
   final HttpHelper _http = HttpHelper();
 
+  Future<ExportReportResponse> exportSalaryPaymentReport({
+    int? month,
+    String? teacherId,
+    String? status,
+    String format = 'excel',
+  }) async {
+    final queryParams = <String, String>{'format': format};
+    if (month != null) queryParams['month'] = month.toString();
+    if (teacherId != null) queryParams['teacher_id'] = teacherId;
+    if (status != null) queryParams['status'] = status;
+
+    final queryString = queryParams.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+
+    final response = await _http.get(
+      '/reports/salary-payments/export?$queryString',
+    );
+    return ExportReportResponse.fromJson(_http.handleJson(response));
+  }
+
+  Future<Uint8List> createSalaryPaymentReportPdf({
+    int? month,
+    String? teacherId,
+    String? status,
+  }) async {
+    final queryParams = <String, String>{};
+    if (month != null) queryParams['month'] = month.toString();
+    if (teacherId != null) queryParams['teacher_id'] = teacherId;
+    if (status != null) queryParams['status'] = status;
+
+    final queryString = queryParams.entries
+        .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+
+    final response = await _http.get(
+      '/reports/salary-payments/report-pdf${queryString.isEmpty ? '' : '?$queryString'}',
+      headers: {'Accept': 'application/pdf'},
+      timeout: const Duration(seconds: 90),
+    );
+
+    if (response.statusCode != 200) {
+      _http.handleJson(response);
+      throw Exception('ບໍ່ສາມາດສ້າງ PDF ໄດ້');
+    }
+
+    return response.bodyBytes;
+  }
+
   Future<FinanceReportResponse> getFinanceReport({
     String? academicId,
     int? year,

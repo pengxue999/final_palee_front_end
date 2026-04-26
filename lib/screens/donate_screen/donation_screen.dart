@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart';
+import '../../core/utils/donation_certificate_printer.dart';
 import '../../core/constants/fixed_donation_categories.dart';
 import '../../core/utils/format_utils.dart';
 import '../../models/donation_model.dart';
@@ -17,6 +18,7 @@ import '../../widgets/app_dropdown.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/app_date_field.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/print_preparation_overlay.dart';
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -28,6 +30,7 @@ class DonationScreen extends ConsumerStatefulWidget {
 class _DonationScreenState extends ConsumerState<DonationScreen> {
   bool showAddEditModal = false;
   bool showDeleteDialog = false;
+  bool _isPreparingPrint = false;
   DonationModel? selectedItem;
   bool isEditing = false;
 
@@ -261,6 +264,28 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     }
   }
 
+  Future<void> _printCertificate(DonationModel item) async {
+    if (_isPreparingPrint) {
+      return;
+    }
+
+    setState(() => _isPreparingPrint = true);
+
+    await showDonationCertificatePrintDialog(
+      context: context,
+      donationId: item.donationId,
+      onPreviewReady: () {
+        if (mounted && _isPreparingPrint) {
+          setState(() => _isPreparingPrint = false);
+        }
+      },
+    );
+
+    if (mounted && _isPreparingPrint) {
+      setState(() => _isPreparingPrint = false);
+    }
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -330,6 +355,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
             child: AppDataTable<DonationModel>(
               columns: columns,
               onAdd: _openAdd,
+              onPrint: _printCertificate,
               onEdit: _openEdit,
               onDelete: _confirmDelete,
               searchKeys: const [
@@ -345,6 +371,14 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
         ),
         if (showAddEditModal) _buildFormModal(),
         if (showDeleteDialog) _buildDeleteDialog(),
+        if (_isPreparingPrint)
+          const PrintPreparationOverlay(
+            icon: Icons.workspace_premium_rounded,
+            title: 'ກຳລັງໂຫຼດ...',
+            message:
+                'ລະບົບກຳລັງດຶງຂໍ້ມູນໃບກຽດຕິຄຸນ ແລະ ສ້າງ preview ໃຫ້ພ້ອມສຳລັບການພິມ',
+            hintText: 'ຈະເປີດ preview ອັດຕະໂນມັດ',
+          ),
       ],
     );
   }

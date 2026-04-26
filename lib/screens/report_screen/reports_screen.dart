@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:palee_elite_training_center/screens/report_screen/report_finance.dart';
+import 'package:palee_elite_training_center/screens/report_screen/report_salary_payment.dart';
 import 'package:palee_elite_training_center/screens/report_screen/report_student_screen.dart';
 import 'package:palee_elite_training_center/screens/report_screen/report_teacher_attendance_screen.dart';
 import 'package:palee_elite_training_center/screens/report_screen/report_donation.dart';
@@ -67,6 +68,8 @@ class _ReportsPageState extends State<ReportsScreen> with RouteAware {
         return ReportTeacherAttendanceScreen();
       case 'finance':
         return ReportFinanceScreen();
+      case 'salary-payment':
+        return const ReportSalaryPaymentScreen();
       case 'assessment':
         return const ReportAssessmentScreen();
       case 'donation':

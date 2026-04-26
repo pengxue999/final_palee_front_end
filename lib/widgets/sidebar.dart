@@ -314,6 +314,13 @@ class _SidebarState extends ConsumerState<Sidebar> {
           tableName: 'finance',
         ),
         MenuItemModel(
+          id: 'report-salary-payment',
+          label: 'ລາຍງານເບີກຈ່າຍເງິນສອນ',
+          icon: Icons.receipt_long_rounded,
+          path: '/reports?type=salary-payment',
+          tableName: 'salary_payment',
+        ),
+        MenuItemModel(
           id: 'report-assessment',
           label: 'ລາຍງານຜົນການຮຽນ',
           icon: Icons.emoji_events_rounded,

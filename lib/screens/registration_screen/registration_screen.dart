@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:palee_elite_training_center/widgets/api_error_handler.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/format_utils.dart';
-import '../../core/utils/receipt_printer.dart';
+import '../../core/utils/registration_receipt_printer.dart';
 import '../../models/fee_model.dart';
 import '../../models/registration_model.dart';
 import '../../providers/registration_provider.dart';
@@ -67,25 +67,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       final details = await detailsFuture;
       final fees = (await feesFuture).data;
 
-      final selectedDetails = details
-          .where(
-            (detail) => detail.registrationId == registration.registrationId,
-          )
-          .toList(growable: false);
-      final feeById = {for (final fee in fees) fee.feeId: fee};
-      final selectedFees = selectedDetails
-          .map((detail) => feeById[detail.feeId])
-          .whereType<FeeModel>()
-          .toList(growable: false);
-
-      final tuitionFee = selectedFees.fold<int>(
-        0,
-        (sum, fee) => sum + fee.fee.toInt(),
-      );
-      final totalFee = registration.totalAmount.toInt();
-      final discountAmount =
-          (registration.totalAmount - registration.finalAmount).toInt();
-
       if (!mounted) {
         return;
       }
@@ -93,13 +74,6 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       await showRegistrationPrintDialog(
         context: context,
         registrationId: registration.registrationId,
-        registrationDate: registration.registrationDate,
-        studentName: registration.studentFullName,
-        selectedFees: selectedFees,
-        tuitionFee: tuitionFee,
-        totalFee: totalFee,
-        discountAmount: discountAmount,
-        netFee: registration.finalAmount.toInt(),
         onPreviewReady: () {
           if (mounted && _isPreparingPrint) {
             setState(() => _isPreparingPrint = false);

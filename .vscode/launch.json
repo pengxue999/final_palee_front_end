@@ -8,6 +8,8 @@
       "type": "dart",
       "program": "lib/main.dart",
       "cwd": "D:/A/palee_elite_training_center_windows",
+      "templateFor": "",
+      "flutterMode": "debug",
       "deviceId": "windows"
     }
   ]
