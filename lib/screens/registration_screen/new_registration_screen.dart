@@ -18,10 +18,12 @@ import 'package:palee_elite_training_center/widgets/app_button.dart';
 import 'package:palee_elite_training_center/widgets/app_dialog.dart';
 import 'package:palee_elite_training_center/widgets/section_card.dart';
 import '../../core/constants/app_colors.dart';
+import '../../models/academic_year_model.dart';
 import '../../core/utils/responsive_utils.dart';
 import '../../models/fee_model.dart';
 import '../../models/student_model.dart';
 import '../../models/registration_model.dart';
+import '../../providers/academic_year_provider.dart';
 import '../../providers/fee_provider.dart';
 import '../../providers/student_provider.dart';
 import '../../providers/registration_provider.dart';
@@ -87,9 +89,34 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   Map<String, String> _scholarshipStatusByFee = {};
   bool _autoRenew = false;
 
-  List<FeeModel> get _fees => ref.watch(feeProvider).fees;
+  static const _activeAcademicStatusLabels = {'ດໍາເນີນການ', 'ACTIVE'};
+
+  List<FeeModel> get _fees {
+    final activeAcademicYear = _currentAcademicYear;
+    if (activeAcademicYear.isEmpty) {
+      return const <FeeModel>[];
+    }
+
+    return ref
+        .watch(feeProvider)
+        .fees
+        .where((fee) => fee.academicYear == activeAcademicYear)
+        .toList();
+  }
+
   bool get _isLoadingFees => ref.watch(feeProvider).isLoading;
-  List<DiscountModel> get _discounts => ref.watch(discountProvider).discounts;
+  List<DiscountModel> get _discounts {
+    final activeAcademicYear = _currentAcademicYear;
+    if (activeAcademicYear.isEmpty) {
+      return const <DiscountModel>[];
+    }
+
+    return ref
+        .watch(discountProvider)
+        .discounts
+        .where((discount) => discount.academicYear == activeAcademicYear)
+        .toList();
+  }
 
   List<StudentModel> get _apiStudents => ref.watch(studentProvider).students;
   List<Student> get _studentsFromApi {
@@ -186,10 +213,23 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   }
 
   String get _currentAcademicYear {
-    if (_fees.isNotEmpty) {
-      return _fees.first.academicYear;
+    return _activeAcademicYear?.academicYear ?? '';
+  }
+
+  String get _displayAcademicYear {
+    return _currentAcademicYear.isNotEmpty
+        ? _currentAcademicYear
+        : 'ບໍ່ພົບສົກຮຽນດໍາເນີນການ';
+  }
+
+  AcademicYearModel? get _activeAcademicYear {
+    final academicYears = ref.read(academicYearProvider).academicYears;
+    for (final academicYear in academicYears) {
+      if (_activeAcademicStatusLabels.contains(academicYear.academicStatus)) {
+        return academicYear;
+      }
     }
-    return '';
+    return null;
   }
 
   void _pickStudent(Student s) {
@@ -314,6 +354,14 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   }
 
   Future<void> _openAddStudentDialog() async {
+    if (_currentAcademicYear.isEmpty) {
+      AppToast.warning(
+        context,
+        'ບໍ່ພົບສົກຮຽນທີ່ດໍາເນີນການ ຈຶ່ງບໍ່ສາມາດເພີ່ມການລົງທະບຽນໄດ້',
+      );
+      return;
+    }
+
     final createdStudent = await showDialog<Student>(
       context: context,
       builder: (dialogContext) =>
@@ -329,6 +377,7 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(academicYearProvider.notifier).getAcademicYears();
       ref.read(studentProvider.notifier).getStudents();
       ref.read(feeProvider.notifier).getFees();
       ref.read(discountProvider.notifier).getDiscounts();
@@ -343,6 +392,8 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.watch(academicYearProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF0F4F8),
       body: Stack(
@@ -367,7 +418,9 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
                           .where((f) => _selectedFeeIds.contains(f.feeId))
                           .toList(),
                       onRemove: _toggleFee,
-                      academicYear: _academicYearFromFees,
+                      academicYear: _selectedFeeIds.isNotEmpty
+                          ? _academicYearFromFees
+                          : _displayAcademicYear,
                       registrationDate: _fmtDate(DateTime.now()),
                       studentName: _selectedStudent?.fullName,
                       tuitionFee: _tuitionFee,
@@ -384,9 +437,11 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
                       autoRenew: _autoRenew,
                       onAutoRenewChanged: (v) => setState(() => _autoRenew = v),
                       canSave:
+                          _currentAcademicYear.isNotEmpty &&
                           _selectedStudent != null &&
                           _selectedFeeIds.isNotEmpty,
                       discountEnabled:
+                          _currentAcademicYear.isNotEmpty &&
                           _selectedStudent != null &&
                           _selectedFeeIds.isNotEmpty,
                       onSave: _handleSave,

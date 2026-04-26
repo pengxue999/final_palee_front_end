@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palee_elite_training_center/core/constants/app_colors.dart';
 import 'package:palee_elite_training_center/core/utils/format_utils.dart';
 import 'package:palee_elite_training_center/models/evaluation_model.dart';
+import 'package:palee_elite_training_center/providers/assessment_report_provider.dart';
 import 'package:palee_elite_training_center/providers/evaluation_provider.dart';
 import 'package:palee_elite_training_center/widgets/api_error_handler.dart';
 import 'package:palee_elite_training_center/widgets/app_button.dart';
@@ -22,12 +23,522 @@ class EvaluateStudentScreen extends ConsumerStatefulWidget {
 
 class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
   static const _semesters = [
+    {'value': 'all', 'label': 'ທັງໝົດ'},
+    {'value': 'Semester 1', 'label': 'ກາງພາກ'},
+    {'value': 'Semester 2', 'label': 'ທ້າຍພາກ'},
+  ];
+
+  final Map<String, TextEditingController> _scoreControllers = {};
+  final Set<String> _dirtyItemKeys = <String>{};
+
+  String? _selectedSemester;
+  String? _selectedSubjectId;
+  String? _selectedLevelId;
+  bool _isBulkSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _resetFiltersAndReload();
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposeInlineControllers();
+    super.dispose();
+  }
+
+  String _formatAverage(double value) {
+    return value.toStringAsFixed(value.truncateToDouble() == value ? 0 : 2);
+  }
+
+  String _semesterLabel(String? value) {
+    switch (value) {
+      case 'Semester 1':
+      case 'ກາງພາກ':
+        return 'ກາງພາກ';
+      case 'Semester 2':
+      case 'ທ້າຍພາກ':
+        return 'ທ້າຍພາກ';
+      case 'all':
+        return 'ທັງໝົດ';
+      default:
+        return value ?? '-';
+    }
+  }
+
+  String _toReportSemester(String? value) {
+    switch (value) {
+      case 'ກາງພາກ':
+        return 'Semester 1';
+      case 'ທ້າຍພາກ':
+        return 'Semester 2';
+      default:
+        return value ?? 'all';
+    }
+  }
+
+  String _itemKey(AssessmentReportItem item) {
+    return '${item.evaluationId}:${item.regisDetailId}';
+  }
+
+  String _groupKey(AssessmentReportItem item) {
+    return '${item.semester}|${item.levelId}|${item.subjectDetailId}';
+  }
+
+  void _disposeInlineControllers() {
+    for (final controller in _scoreControllers.values) {
+      controller.dispose();
+    }
+    _scoreControllers.clear();
+  }
+
+  void _syncInlineEditors(List<AssessmentReportItem> items) {
+    _disposeInlineControllers();
+    _dirtyItemKeys.clear();
+
+    for (final item in items) {
+      final key = _itemKey(item);
+      _scoreControllers[key] = TextEditingController(
+        text: _formatAverage(item.score),
+      );
+    }
+  }
+
+  double? _readInlineScore(AssessmentReportItem item) {
+    final rawScore =
+        _scoreControllers[_itemKey(item)]?.text.trim().replaceAll(',', '') ??
+        '';
+    if (rawScore.isEmpty) {
+      return null;
+    }
+    return double.tryParse(rawScore);
+  }
+
+  bool _sameNumber(double? left, double? right) {
+    if (left == null && right == null) {
+      return true;
+    }
+    if (left == null || right == null) {
+      return false;
+    }
+    return (left - right).abs() < 0.001;
+  }
+
+  void _handleInlineChanged(AssessmentReportItem item) {
+    final key = _itemKey(item);
+    final isDirty = !_sameNumber(_readInlineScore(item), item.score);
+
+    setState(() {
+      if (isDirty) {
+        _dirtyItemKeys.add(key);
+      } else {
+        _dirtyItemKeys.remove(key);
+      }
+    });
+  }
+
+  Future<void> _loadReport() async {
+    if (_selectedSemester == null) {
+      ref.read(assessmentReportProvider.notifier).clear();
+      setState(() {
+        _disposeInlineControllers();
+        _dirtyItemKeys.clear();
+      });
+      return;
+    }
+
+    await ref
+        .read(assessmentReportProvider.notifier)
+        .loadReport(semester: _selectedSemester!);
+
+    final state = ref.read(assessmentReportProvider);
+    if (!mounted) {
+      return;
+    }
+    if (state.error != null) {
+      ApiErrorHandler.handle(context, state.error!);
+      return;
+    }
+
+    setState(() {
+      _syncInlineEditors(state.items);
+    });
+  }
+
+  Future<void> _resetFiltersAndReload() async {
+    setState(() {
+      _selectedSemester = 'all';
+      _selectedSubjectId = null;
+      _selectedLevelId = null;
+    });
+    await _loadReport();
+  }
+
+  List<AssessmentReportItem> _filterItems(List<AssessmentReportItem> items) {
+    return items.where((item) {
+      if (_selectedSubjectId != null && item.subjectId != _selectedSubjectId) {
+        return false;
+      }
+      if (_selectedLevelId != null && item.levelId != _selectedLevelId) {
+        return false;
+      }
+      return true;
+    }).toList();
+  }
+
+  Future<void> _saveInlineEdits() async {
+    if (_dirtyItemKeys.isEmpty || _isBulkSaving) {
+      return;
+    }
+
+    final dirtyItems = ref
+        .read(assessmentReportProvider)
+        .items
+        .where((item) => _dirtyItemKeys.contains(_itemKey(item)))
+        .toList();
+
+    if (dirtyItems.isEmpty) {
+      return;
+    }
+
+    setState(() => _isBulkSaving = true);
+
+    try {
+      final service = ref.read(evaluationServiceProvider);
+      final dirtyGroups = dirtyItems.map(_groupKey).toSet();
+
+      for (final groupKey in dirtyGroups) {
+        final groupItems = dirtyItems
+            .where((item) => _groupKey(item) == groupKey)
+            .toList();
+        if (groupItems.isEmpty) {
+          continue;
+        }
+
+        final firstItem = groupItems.first;
+        final request = EvaluationScoreSheetRequest(
+          semester: firstItem.semester,
+          levelId: firstItem.levelId,
+          subjectDetailId: firstItem.subjectDetailId,
+          scores: groupItems
+              .map(
+                (item) => EvaluationScoreUpdateItem(
+                  regisDetailId: item.regisDetailId,
+                  score: _readInlineScore(item),
+                  prize: null,
+                ),
+              )
+              .toList(),
+        );
+
+        await service.saveScoreSheet(request);
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      await SuccessOverlay.show(context, message: 'ອັບເດດຂໍ້ມູນສຳເລັດ');
+      await _loadReport();
+    } catch (e) {
+      if (mounted) {
+        ApiErrorHandler.handle(context, e.toString());
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isBulkSaving = false);
+      }
+    }
+  }
+
+  Future<void> _openScoreEntryDialog({
+    String? initialSemester,
+    String? initialSubjectId,
+    String? initialLevelId,
+  }) async {
+    final savedSheet = await _EvaluationScoreEntryDialog.show(
+      context: context,
+      initialSemester: initialSemester,
+      initialSubjectId: initialSubjectId,
+      initialLevelId: initialLevelId,
+    );
+    if (!mounted || savedSheet == null) {
+      return;
+    }
+
+    setState(() {
+      _selectedSemester = _toReportSemester(savedSheet.semester);
+      _selectedSubjectId = savedSheet.subjectId;
+      _selectedLevelId = savedSheet.levelId;
+    });
+    await _loadReport();
+  }
+
+  List<DataColumnDef<AssessmentReportItem>> _buildResultColumns() {
+    return [
+      DataColumnDef<AssessmentReportItem>(
+        key: 'fullName',
+        label: 'ນັກຮຽນ',
+        flex: 3,
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'semester',
+        label: 'ຮອບປະເມີນ',
+        flex: 2,
+        render: (_, item) => Text(_semesterLabel(item.semester)),
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'subjectName',
+        label: 'ວິຊາ',
+        flex: 2,
+        render: (_, item) => Text(item.subjectName),
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'levelName',
+        label: 'ຊັ້ນຮຽນ',
+        flex: 2,
+        render: (_, item) => Text(item.levelName),
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'score',
+        label: 'ຄະແນນ',
+        flex: 2,
+        render: (_, item) => AppTextField(
+          controller: _scoreControllers[_itemKey(item)],
+          hint: '0-10',
+          digitOnly: DigitOnly.decimal,
+          maxLength: 4,
+          maxValue: 10,
+          fontWeight: FontWeight.w700,
+          onChanged: (_) => _handleInlineChanged(item),
+        ),
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'ranking',
+        label: 'ທີ່',
+        flex: 1,
+        render: (_, item) => Text(
+          item.ranking.toString(),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: AppColors.primary.withValues(alpha: 0.9),
+          ),
+        ),
+      ),
+      DataColumnDef<AssessmentReportItem>(
+        key: 'prize',
+        label: 'ລາງວັນ',
+        flex: 2,
+        render: (_, item) => Text(
+          item.prize == null ? '-' : FormatUtils.formatCurrency(item.prize!),
+          style: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+    ];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reportState = ref.watch(assessmentReportProvider);
+    final filteredItems = _filterItems(reportState.items);
+    final canBulkSave =
+        _dirtyItemKeys.isNotEmpty && !reportState.isLoading && !_isBulkSaving;
+    final availableSubjects = {
+      for (final item in reportState.items) item.subjectId: item.subjectName,
+    }.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
+    final availableLevels = {
+      for (final item in reportState.items)
+        if (_selectedSubjectId == null || item.subjectId == _selectedSubjectId)
+          item.levelId: item.levelName,
+    }.entries.toList()..sort((a, b) => a.value.compareTo(b.value));
+    final selectedSubjectValue =
+        availableSubjects.any((item) => item.key == _selectedSubjectId)
+        ? _selectedSubjectId
+        : null;
+    final selectedLevelValue =
+        availableLevels.any((item) => item.key == _selectedLevelId)
+        ? _selectedLevelId
+        : null;
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppCard(
+            width: double.infinity,
+            child: Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: [
+                SizedBox(
+                  width: 180,
+                  child: AppDropdown<String>(
+                    label: 'ຮອບປະເມີນ',
+                    value: _selectedSemester,
+                    items: _semesters.map((item) {
+                      return DropdownMenuItem(
+                        value: item['value'],
+                        child: Text(item['label'] ?? ''),
+                      );
+                    }).toList(),
+                    onChanged: (value) async {
+                      setState(() {
+                        _selectedSemester = value;
+                        _selectedSubjectId = null;
+                        _selectedLevelId = null;
+                      });
+                      await _loadReport();
+                    },
+                    hint: 'ເລືອກຮອບປະເມີນ',
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: AppDropdown<String>(
+                    label: 'ວິຊາ',
+                    value: selectedSubjectValue,
+                    items: availableSubjects
+                        .map(
+                          (item) => DropdownMenuItem(
+                            value: item.key,
+                            child: Text(item.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedSubjectId = value;
+                        _selectedLevelId = null;
+                      });
+                    },
+                    hint: 'ທັງໝົດ',
+                    enabled: reportState.items.isNotEmpty,
+                  ),
+                ),
+                SizedBox(
+                  width: 200,
+                  child: AppDropdown<String>(
+                    label: 'ຊັ້ນຮຽນ',
+                    value: selectedLevelValue,
+                    items: availableLevels
+                        .map(
+                          (item) => DropdownMenuItem(
+                            value: item.key,
+                            child: Text(item.value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedLevelId = value);
+                    },
+                    hint: 'ທັງໝົດ',
+                    enabled: reportState.items.isNotEmpty,
+                  ),
+                ),
+                SizedBox(
+                  width: 140,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: AppButton(
+                      label: 'ລ້າງຟິວເຕີ',
+                      icon: Icons.refresh_rounded,
+                      variant: AppButtonVariant.success,
+                      onPressed: _resetFiltersAndReload,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 160,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 30),
+                    child: AppButton(
+                      label: 'ອັບເດດ',
+                      icon: Icons.save_as_rounded,
+                      onPressed: canBulkSave ? _saveInlineEdits : null,
+                      isLoading: _isBulkSaving,
+                    ),
+                  ),
+                ),
+                // SizedBox(
+                //   width: 160,
+                //   child: Padding(
+                //     padding: const EdgeInsets.only(top: 30),
+                //     child: AppButton(
+                //       label: 'ປະເມີນໃໝ່',
+                //       icon: Icons.save_as_rounded,
+                //       onPressed: ,
+                //       isLoading: _isBulkSaving,
+                //     ),
+                //   ),
+                // ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: AppDataTable<AssessmentReportItem>(
+              columns: _buildResultColumns(),
+              data: filteredItems,
+              isLoading: reportState.isLoading,
+              rowHeight: 76,
+              showActions: false,
+              title: 'ຕາຕະລາງປະເມີນ',
+              onAdd: () => _openScoreEntryDialog(),
+              addLabel: 'ປະເມີນໃໝ່',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EvaluationScoreEntryDialog extends ConsumerStatefulWidget {
+  const _EvaluationScoreEntryDialog({
+    this.initialSemester,
+    this.initialSubjectId,
+    this.initialLevelId,
+  });
+
+  final String? initialSemester;
+  final String? initialSubjectId;
+  final String? initialLevelId;
+
+  static const _semesters = [
     {'value': 'ກາງພາກ', 'label': 'ກາງພາກ'},
     {'value': 'ທ້າຍພາກ', 'label': 'ທ້າຍພາກ'},
   ];
 
+  static Future<EvaluationScoreSheet?> show({
+    required BuildContext context,
+    String? initialSemester,
+    String? initialSubjectId,
+    String? initialLevelId,
+  }) {
+    return showDialog<EvaluationScoreSheet>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _EvaluationScoreEntryDialog(
+        initialSemester: initialSemester,
+        initialSubjectId: initialSubjectId,
+        initialLevelId: initialLevelId,
+      ),
+    );
+  }
+
+  @override
+  ConsumerState<_EvaluationScoreEntryDialog> createState() =>
+      _EvaluationScoreEntryDialogState();
+}
+
+class _EvaluationScoreEntryDialogState
+    extends ConsumerState<_EvaluationScoreEntryDialog> {
   final Map<int, TextEditingController> _scoreControllers = {};
-  final Map<int, TextEditingController> _prizeControllers = {};
+  final ScrollController _studentsScrollController = ScrollController();
 
   List<EvaluationScoreEntryStudent> _displayStudents = [];
   bool _hasScoreInput = false;
@@ -40,15 +551,43 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
   @override
   void initState() {
     super.initState();
+    _selectedSemester = _normalizeEntrySemester(widget.initialSemester);
+    _selectedSubjectId = widget.initialSubjectId;
+    _selectedLevelId = widget.initialLevelId;
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      ref.read(evaluationProvider.notifier).resetScoreEntryForm();
       await _loadSubjects();
+      if (_selectedSubjectId != null) {
+        await _loadLevelsForSubject();
+      }
+      if (_selectedLevelId != null) {
+        final levels = ref.read(evaluationProvider).availableLevels;
+        final selectedLevel = levels
+            .where((item) => item.levelId == _selectedLevelId)
+            .firstOrNull;
+        _selectedSubjectDetailId = selectedLevel?.subjectDetailId;
+        await _loadSheet();
+      }
     });
   }
 
   @override
   void dispose() {
     _disposeControllers();
+    _studentsScrollController.dispose();
     super.dispose();
+  }
+
+  String? _normalizeEntrySemester(String? value) {
+    switch (value) {
+      case 'Semester 1':
+        return 'ກາງພາກ';
+      case 'Semester 2':
+        return 'ທ້າຍພາກ';
+      default:
+        return value;
+    }
   }
 
   void _disposeControllers() {
@@ -56,11 +595,6 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
       controller.dispose();
     }
     _scoreControllers.clear();
-
-    for (final controller in _prizeControllers.values) {
-      controller.dispose();
-    }
-    _prizeControllers.clear();
   }
 
   double? _readScore(int regisDetailId) {
@@ -70,23 +604,6 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
       return null;
     }
     return double.tryParse(rawScore);
-  }
-
-  double? _readPrize(int regisDetailId) {
-    final rawPrize =
-        _prizeControllers[regisDetailId]?.text.trim().replaceAll(',', '') ?? '';
-    if (rawPrize.isEmpty) {
-      return null;
-    }
-    return double.tryParse(rawPrize);
-  }
-
-  String _formatMoneyInput(double? value) {
-    if (value == null) {
-      return '';
-    }
-
-    return FormatUtils.formatNumber(value.toInt());
   }
 
   String _formatAverage(double value) {
@@ -110,25 +627,7 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     if (sheet == null) {
       return false;
     }
-
     return sheet.students.any((student) => student.score != null);
-  }
-
-  String _resolveEvaluationDate(String? value) {
-    if (value == null || value.isEmpty) {
-      return DateTime.now().toIso8601String().split('T').first;
-    }
-
-    if (RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
-      return value;
-    }
-
-    final parts = value.split('-');
-    if (parts.length == 3 && parts[0].length == 2) {
-      return '${parts[2]}-${parts[1]}-${parts[0]}';
-    }
-
-    return DateTime.now().toIso8601String().split('T').first;
   }
 
   String _semesterLabel(String? value) {
@@ -142,93 +641,6 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
       default:
         return value ?? '-';
     }
-  }
-
-  String _currentRankingLabel(EvaluationScoreEntryStudent student) {
-    if (student.ranking == null) {
-      return '-';
-    }
-    return student.ranking.toString();
-  }
-
-  List<DataColumnDef<EvaluationScoreEntryStudent>> _buildColumns() {
-    return [
-      DataColumnDef<EvaluationScoreEntryStudent>(
-        key: 'student',
-        label: 'ນັກຮຽນ',
-        flex: 4,
-        render: (_, student) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              student.fullName,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              '${student.registrationId} | ${student.studentId} | ${student.subjectName}',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.mutedForeground.withValues(alpha: 0.85),
-              ),
-            ),
-          ],
-        ),
-      ),
-      DataColumnDef<EvaluationScoreEntryStudent>(
-        key: 'score',
-        label: 'ຄະແນນ',
-        flex: 2,
-        render: (_, student) => AppTextField(
-          controller: _scoreControllers[student.regisDetailId],
-          hint: '0-10',
-          digitOnly: DigitOnly.decimal,
-          maxLength: 3,
-          maxValue: 10,
-          onChanged: (_) => _handleScoreChanged(),
-        ),
-      ),
-      DataColumnDef<EvaluationScoreEntryStudent>(
-        key: 'ranking',
-        label: 'ຈັດອັນດັບ',
-        flex: 2,
-        render: (_, student) => Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Text(
-            _currentRankingLabel(student),
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: AppColors.primary.withValues(alpha: 0.9),
-            ),
-          ),
-        ),
-      ),
-      DataColumnDef<EvaluationScoreEntryStudent>(
-        key: 'prize',
-        label: 'ລາງວັນ',
-        flex: 2,
-        render: (_, student) => AppTextField(
-          controller: _prizeControllers[student.regisDetailId],
-          hint: '0',
-          digitOnly: DigitOnly.integer,
-          thousandsSeparator: true,
-          fontSize: 22,
-          fontWeight: FontWeight.w700,
-          suffixIcon: IconButton(
-            onPressed: () {
-              _prizeControllers[student.regisDetailId]?.clear();
-            },
-            icon:
-                _prizeControllers[student.regisDetailId]?.text.isNotEmpty ==
-                    true
-                ? const Icon(Icons.close_rounded, size: 18)
-                : const SizedBox.shrink(),
-          ),
-        ),
-      ),
-    ];
   }
 
   Future<void> _loadSubjects() async {
@@ -246,6 +658,10 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     final subjectId = _selectedSubjectId;
     if (subjectId == null) {
       ref.read(evaluationProvider.notifier).clearSheet(clearSubjects: false);
+      setState(() {
+        _selectedLevelId = null;
+        _selectedSubjectDetailId = null;
+      });
       _syncControllers(null);
       return;
     }
@@ -259,6 +675,17 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     }
     if (state.error != null) {
       ApiErrorHandler.handle(context, state.error!);
+      return;
+    }
+
+    final stillExists = state.availableLevels.any(
+      (item) => item.subjectDetailId == _selectedSubjectDetailId,
+    );
+    if (!stillExists) {
+      setState(() {
+        _selectedLevelId = null;
+        _selectedSubjectDetailId = null;
+      });
     }
   }
 
@@ -280,7 +707,9 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
         );
 
     final state = ref.read(evaluationProvider);
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (state.error != null) {
       ApiErrorHandler.handle(context, state.error!);
@@ -304,9 +733,6 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     for (final student in sheet.students) {
       _scoreControllers[student.regisDetailId] = TextEditingController(
         text: student.score == null ? '' : _formatAverage(student.score!),
-      );
-      _prizeControllers[student.regisDetailId] = TextEditingController(
-        text: _formatMoneyInput(student.prize),
       );
     }
 
@@ -332,14 +758,15 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
       semester: _selectedSemester ?? _semesterLabel(sheet.semester),
       levelId: sheet.levelId,
       subjectDetailId: sheet.subjectDetailId,
-      evaluationDate: _resolveEvaluationDate(sheet.evaluationDate),
-      scores: _displayStudents.map((student) {
-        return EvaluationScoreUpdateItem(
-          regisDetailId: student.regisDetailId,
-          score: _readScore(student.regisDetailId),
-          prize: _readPrize(student.regisDetailId),
-        );
-      }).toList(),
+      scores: _displayStudents
+          .map(
+            (student) => EvaluationScoreUpdateItem(
+              regisDetailId: student.regisDetailId,
+              score: _readScore(student.regisDetailId),
+              prize: null,
+            ),
+          )
+          .toList(),
     );
 
     final success = await ref
@@ -347,7 +774,9 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
         .saveScoreSheet(request);
     final state = ref.read(evaluationProvider);
 
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     if (!success) {
       ApiErrorHandler.handle(
@@ -357,27 +786,176 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
       return;
     }
 
-    _syncControllers(state.sheet);
     await SuccessOverlay.show(
       context,
       message: _hasPersistedScores(sheet)
           ? 'ອັບເດດຂໍ້ມູນສຳເລັດ'
           : 'ບັນທຶກຂໍ້ມູນສຳເລັດ',
     );
-    _resetForm();
+
+    if (mounted) {
+      Navigator.of(context).pop(state.sheet);
+    }
   }
 
-  void _resetForm() {
-    ref.read(evaluationProvider.notifier).resetScoreEntryForm();
-    _disposeControllers();
-    setState(() {
-      _selectedSemester = null;
-      _selectedSubjectId = null;
-      _selectedSubjectDetailId = null;
-      _selectedLevelId = null;
-      _displayStudents = [];
-      _hasScoreInput = false;
-    });
+  Widget _buildStudentRow(EvaluationScoreEntryStudent student, int index) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      color: index.isEven
+          ? Colors.transparent
+          : AppColors.muted.withValues(alpha: 0.3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 52,
+            child: Text(
+              '${index + 1}',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Text(
+              student.fullName,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: AppTextField(
+              controller: _scoreControllers[student.regisDetailId],
+              hint: '0-10',
+              digitOnly: DigitOnly.decimal,
+              maxLength: 3,
+              maxValue: 10,
+              onChanged: (_) => _handleScoreChanged(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEditableTable(EvaluationState evaluationState) {
+    final sheet = evaluationState.sheet;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+            decoration: const BoxDecoration(
+              color: AppColors.muted,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border(
+                bottom: BorderSide(color: AppColors.border, width: 1),
+              ),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 52,
+                  child: Text(
+                    'ລຳດັບ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'ນັກຮຽນ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'ຄະແນນ',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.mutedForeground,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (evaluationState.isLoading)
+            const Expanded(child: Center(child: CircularProgressIndicator()))
+          else if (_displayStudents.isEmpty)
+            Expanded(
+              child: Center(
+                child: Text(
+                  sheet == null
+                      ? 'ເລືອກຂໍ້ມູນໃຫ້ຄົບເພື່ອສະແດງລາຍຊື່ນັກຮຽນ'
+                      : 'ບໍ່ມີນັກຮຽນສຳລັບເງື່ອນໄຂນີ້',
+                  style: const TextStyle(color: AppColors.mutedForeground),
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: Scrollbar(
+                controller: _studentsScrollController,
+                thumbVisibility: true,
+                child: ListView.separated(
+                  controller: _studentsScrollController,
+                  padding: EdgeInsets.zero,
+                  itemCount: _displayStudents.length,
+                  separatorBuilder: (_, __) =>
+                      const Divider(height: 1, color: AppColors.border),
+                  itemBuilder: (context, index) =>
+                      _buildStudentRow(_displayStudents[index], index),
+                ),
+              ),
+            ),
+          if (sheet != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.muted.withValues(alpha: 0.35),
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+                border: const Border(
+                  top: BorderSide(color: AppColors.border, width: 1),
+                ),
+              ),
+              child: Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                children: [
+                  Text('ວິຊາ: ${sheet.subjectName}'),
+                  Text('ລະດັບ: ${sheet.levelName}'),
+                  Text('ຮອບ: ${_semesterLabel(sheet.semester)}'),
+                  Text('ນັກຮຽນ: ${sheet.summary.totalStudents} ຄົນ'),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -386,6 +964,16 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     final sheet = evaluationState.sheet;
     final availableSubjects = evaluationState.availableSubjects;
     final availableLevels = evaluationState.availableLevels;
+    final selectedSubjectValue =
+        availableSubjects.any((item) => item.subjectId == _selectedSubjectId)
+        ? _selectedSubjectId
+        : null;
+    final selectedLevelValue =
+        availableLevels.any(
+          (item) => item.subjectDetailId == _selectedSubjectDetailId,
+        )
+        ? _selectedSubjectDetailId
+        : null;
     final hasExistingScores = _hasPersistedScores(sheet);
     final canSave =
         sheet != null && !evaluationState.isSaving && _hasScoreInput;
@@ -393,158 +981,198 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
     final primaryActionIcon = hasExistingScores
         ? Icons.edit_note_rounded
         : Icons.save_rounded;
-    final tableColumns = _buildColumns();
-    final tableTitle = 'ຕາຕະລາງປະເມີນ';
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          AppCard(
-            width: double.infinity,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'ປະເມີນຜົນການຮຽນ',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.foreground,
-                  ),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.9,
+        constraints: BoxConstraints(
+          maxWidth: 1180,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              decoration: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: AppColors.border, width: 1),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'ເລືອກຮອບປະເມີນ,ວິຊາ  ແລະ ຊັ້ນຮຽນ/ລະດັບ ເພື່ອສະແດງນັກຮຽນ.',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColors.mutedForeground.withValues(alpha: 0.9),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.initialLevelId == null
+                              ? 'ປ້ອນຄະແນນປະເມີນ'
+                              : 'ແກ້ໄຂຄະແນນປະເມີນ',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.foreground,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'ເລືອກຮອບປະເມີນ, ວິຊາ, ແລະ ຊັ້ນຮຽນ/ລະດັບ ແລ້ວປ້ອນຄະແນນຂອງນັກຮຽນ.',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.mutedForeground,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 16,
-                  runSpacing: 16,
+                  IconButton(
+                    onPressed: evaluationState.isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(
-                      width: 180,
-                      child: AppDropdown<String>(
-                        label: 'ຮອບປະເມີນ',
-                        value: _selectedSemester,
-                        items: _semesters.map((item) {
-                          return DropdownMenuItem(
-                            value: item['value'],
-                            child: Text(item['label'] ?? ''),
-                          );
-                        }).toList(),
-                        onChanged: (value) async {
-                          setState(() => _selectedSemester = value);
-                          await _loadSheet();
-                        },
-                        hint: 'ເລືອກຮອບປະເມີນ',
-                      ),
-                    ),
-                    SizedBox(
-                      width: 220,
-                      child: AppDropdown<String>(
-                        label: 'ວິຊາ',
-                        value: _selectedSubjectId,
-                        items: availableSubjects.map((item) {
-                          return DropdownMenuItem(
-                            value: item.subjectId,
-                            child: Text(item.subjectName),
-                          );
-                        }).toList(),
-                        onChanged: (value) async {
-                          setState(() {
-                            _selectedSubjectId = value;
-                            _selectedSubjectDetailId = null;
-                            _selectedLevelId = null;
-                          });
-                          ref.read(evaluationProvider.notifier).clearSheet();
-                          _syncControllers(null);
-                          await _loadLevelsForSubject();
-                        },
-                        hint: evaluationState.isLoadingSubjects
-                            ? 'ກຳລັງໂຫຼດວິຊາ...'
-                            : 'ເລືອກວິຊາ',
-                        enabled: !evaluationState.isLoadingSubjects,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 180,
-                      child: AppDropdown<String>(
-                        label: 'ຊັ້ນຮຽນ/ລະດັບ',
-                        value: _selectedLevelId,
-                        items: availableLevels.map((item) {
-                          return DropdownMenuItem(
-                            value: item.levelId,
-                            child: Text(item.levelName),
-                          );
-                        }).toList(),
-                        onChanged: (value) async {
-                          final selectedLevel = availableLevels
-                              .where((item) => item.levelId == value)
-                              .firstOrNull;
-                          setState(() {
-                            _selectedLevelId = value;
-                            _selectedSubjectDetailId =
-                                selectedLevel?.subjectDetailId;
-                          });
-                          await _loadSheet();
-                        },
-                        hint: evaluationState.isLoadingLevels
-                            ? 'ກຳລັງໂຫຼດລະດັບ...'
-                            : 'ເລືອກລະດັບ',
-                        enabled:
-                            _selectedSubjectId != null &&
-                            !evaluationState.isLoadingLevels,
-                      ),
-                    ),
-                    SizedBox(
-                      width: 140,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 30),
-                        child: AppButton(
-                          label: primaryActionLabel,
-                          icon: primaryActionIcon,
-                          onPressed: canSave ? _arrangeAndPersistSheet : null,
-                          isLoading: evaluationState.isSaving,
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 16,
+                      children: [
+                        SizedBox(
+                          width: 190,
+                          child: AppDropdown<String>(
+                            label: 'ຮອບປະເມີນ',
+                            value: _selectedSemester,
+                            items: _EvaluationScoreEntryDialog._semesters
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item['value'],
+                                    child: Text(item['label'] ?? ''),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) async {
+                              setState(() => _selectedSemester = value);
+                              await _loadSheet();
+                            },
+                            hint: 'ເລືອກຮອບປະເມີນ',
+                          ),
                         ),
-                      ),
-                    ),
-                    SizedBox(
-                      width: 140,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 30),
-                        child: AppButton(
-                          label: 'ເລີ່ມໃໝ່',
-                          icon: Icons.restart_alt_rounded,
-                          variant: AppButtonVariant.danger,
-                          onPressed: evaluationState.isSaving
-                              ? null
-                              : _resetForm,
+                        SizedBox(
+                          width: 240,
+                          child: AppDropdown<String>(
+                            label: 'ວິຊາ',
+                            value: selectedSubjectValue,
+                            items: availableSubjects
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.subjectId,
+                                    child: Text(item.subjectName),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) async {
+                              setState(() {
+                                _selectedSubjectId = value;
+                                _selectedSubjectDetailId = null;
+                                _selectedLevelId = null;
+                              });
+                              await _loadLevelsForSubject();
+                            },
+                            hint: 'ເລືອກວິຊາ',
+                            enabled: !evaluationState.isLoadingSubjects,
+                          ),
                         ),
-                      ),
+                        SizedBox(
+                          width: 220,
+                          child: AppDropdown<String>(
+                            label: 'ຊັ້ນຮຽນ/ລະດັບ',
+                            value: selectedLevelValue,
+                            items: availableLevels
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.subjectDetailId,
+                                    child: Text(item.levelName),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) async {
+                              final selectedLevel = availableLevels
+                                  .where(
+                                    (item) => item.subjectDetailId == value,
+                                  )
+                                  .firstOrNull;
+                              setState(() {
+                                _selectedSubjectDetailId = value;
+                                _selectedLevelId = selectedLevel?.levelId;
+                              });
+                              await _loadSheet();
+                            },
+                            hint: 'ເລືອກລະດັບ',
+                            enabled: availableLevels.isNotEmpty,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 20),
+                    Expanded(child: _buildEditableTable(evaluationState)),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: AppDataTable<EvaluationScoreEntryStudent>(
-              columns: tableColumns,
-              data: _displayStudents,
-              isLoading: evaluationState.isLoading,
-              rowHeight: 68,
-              showActions: false,
-              title: tableTitle,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                ),
+                border: const Border(
+                  top: BorderSide(color: AppColors.border, width: 1),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  AppButton(
+                    label: 'ຍົກເລີກ',
+                    icon: Icons.close_rounded,
+                    variant: AppButtonVariant.secondary,
+                    onPressed: evaluationState.isSaving
+                        ? null
+                        : () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: 12),
+                  AppButton(
+                    label: primaryActionLabel,
+                    icon: primaryActionIcon,
+                    onPressed: canSave ? _arrangeAndPersistSheet : null,
+                    isLoading: evaluationState.isSaving,
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -55,6 +55,13 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
   }
 
   void _openAdd() {
+    if (_hasActiveAcademicYear) {
+      AppAlert.warning(
+        context,
+        'ບໍ່ສາມາດເພີ່ມສົກຮຽນໃໝ່ໄດ້ ເນື່ອງຈາກຍັງມີສົກຮຽນທີ່ດໍາເນີນການຢູ່',
+      );
+      return;
+    }
     _resetForm();
     setState(() {
       showAddEditModal = true;
@@ -251,6 +258,15 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
     return _yearController.text.isNotEmpty &&
         _startDateController.text.isNotEmpty &&
         _endDateController.text.isNotEmpty;
+  }
+
+  bool get _hasActiveAcademicYear {
+    final academicYears = ref.read(academicYearProvider).academicYears;
+    return academicYears.any(
+      (item) =>
+          item.academicStatus == 'ດໍາເນີນການ' ||
+          item.academicStatus == 'ACTIVE',
+    );
   }
 
   Widget _buildFormModal() {

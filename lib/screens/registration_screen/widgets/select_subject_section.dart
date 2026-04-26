@@ -26,11 +26,30 @@ class SelectSubjectSection extends StatefulWidget {
 }
 
 class SelectSubjectSectionState extends State<SelectSubjectSection> {
+  static const _allCategoriesLabel = 'ທັງໝົດ';
+  static const _uncategorizedLabel = 'ບໍ່ລະບຸໝວດ';
+
+  String _selectedCategory = '';
   String _selectedSubject = '';
+
+  Map<String, List<FeeModel>> get _groupedByCategory {
+    final map = <String, List<FeeModel>>{};
+    for (final fee in widget.allFees) {
+      final category = fee.subjectCategory.trim().isEmpty
+          ? _uncategorizedLabel
+          : fee.subjectCategory.trim();
+      map.putIfAbsent(category, () => []).add(fee);
+    }
+    return map;
+  }
 
   Map<String, List<FeeModel>> get _groupedBySubject {
     final map = <String, List<FeeModel>>{};
-    for (final fee in widget.allFees) {
+    final feesForSelectedCategory = _selectedCategory == _allCategoriesLabel
+        ? widget.allFees
+        : (_groupedByCategory[_selectedCategory] ?? const <FeeModel>[]);
+
+    for (final fee in feesForSelectedCategory) {
       map.putIfAbsent(fee.subjectName, () => []).add(fee);
     }
     for (final list in map.values) {
@@ -39,7 +58,35 @@ class SelectSubjectSectionState extends State<SelectSubjectSection> {
     return map;
   }
 
+  List<String> get _categoryNames {
+    final categories = _groupedByCategory.keys.toList()..sort();
+    return [_allCategoriesLabel, ...categories];
+  }
+
   List<String> get _subjectNames => _groupedBySubject.keys.toList()..sort();
+
+  void _ensureSelectionState() {
+    final categories = _categoryNames;
+    if (categories.isEmpty) {
+      _selectedCategory = '';
+      _selectedSubject = '';
+      return;
+    }
+
+    if (!categories.contains(_selectedCategory)) {
+      _selectedCategory = categories.first;
+    }
+
+    final subjects = _subjectNames;
+    if (subjects.isEmpty) {
+      _selectedSubject = '';
+      return;
+    }
+
+    if (!subjects.contains(_selectedSubject)) {
+      _selectedSubject = subjects.first;
+    }
+  }
 
   void _selectFeeExclusive(String feeId, String subject) {
     final subjectFees = _groupedBySubject[subject] ?? [];
@@ -62,8 +109,9 @@ class SelectSubjectSectionState extends State<SelectSubjectSection> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_subjectNames.isNotEmpty && _selectedSubject.isEmpty) {
-        setState(() => _selectedSubject = _subjectNames.first);
+      if (_categoryNames.isNotEmpty &&
+          (_selectedCategory.isEmpty || _selectedSubject.isEmpty)) {
+        setState(_ensureSelectionState);
       }
     });
   }
@@ -71,8 +119,11 @@ class SelectSubjectSectionState extends State<SelectSubjectSection> {
   @override
   void didUpdateWidget(covariant SelectSubjectSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (!_subjectNames.contains(_selectedSubject) && _subjectNames.isNotEmpty) {
-      setState(() => _selectedSubject = _subjectNames.first);
+    final categories = _categoryNames;
+    final subjects = _subjectNames;
+    if (!categories.contains(_selectedCategory) ||
+        (subjects.isNotEmpty && !subjects.contains(_selectedSubject))) {
+      setState(_ensureSelectionState);
     }
   }
 
@@ -91,6 +142,77 @@ class SelectSubjectSectionState extends State<SelectSubjectSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_categoryNames.isNotEmpty)
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: _categoryNames.map((category) {
+                  final active = category == _selectedCategory;
+                  final subjectCount =
+                      _groupedByCategory[category]
+                          ?.map((fee) => fee.subjectName)
+                          .toSet()
+                          .length ??
+                      0;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 10, bottom: 12),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedCategory = category;
+                            final subjects = _subjectNames;
+                            _selectedSubject = subjects.isNotEmpty
+                                ? subjects.first
+                                : '';
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          curve: Curves.easeOutCubic,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? const Color(0xFFE0ECFF)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(26),
+                            border: Border.all(
+                              color: active
+                                  ? const Color(0xFF3B82F6)
+                                  : const Color(0xFFD6DFEA),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: active ? 0.08 : 0.04),
+                                blurRadius: active ? 14 : 8,
+                                offset: Offset(0, active ? 6 : 3),
+                              ),
+                            ],
+                          ),
+                          child: Text(
+                            category,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: active
+                                  ? const Color(0xFF1D4ED8)
+                                  : const Color(0xFF334155),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
           if (_subjectNames.isNotEmpty)
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,

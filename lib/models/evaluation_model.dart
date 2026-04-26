@@ -183,14 +183,12 @@ class EvaluationScoreSheetRequest {
   final String semester;
   final String levelId;
   final String subjectDetailId;
-  final String evaluationDate;
   final List<EvaluationScoreUpdateItem> scores;
 
   const EvaluationScoreSheetRequest({
     required this.semester,
     required this.levelId,
     required this.subjectDetailId,
-    required this.evaluationDate,
     required this.scores,
   });
 
@@ -198,7 +196,6 @@ class EvaluationScoreSheetRequest {
     'semester': semester,
     'level_id': levelId,
     'subject_detail_id': subjectDetailId,
-    'evaluation_date': evaluationDate,
     'scores': scores.map((item) => item.toJson()).toList(),
   };
 }
@@ -321,12 +318,15 @@ class EvaluationScoreSheetResponse {
 
 class AssessmentReportItem {
   final String evaluationId;
+  final int regisDetailId;
   final String academicId;
   final String? academicYear;
   final String semester;
   final String evaluationType;
   final String subjectId;
+  final String subjectDetailId;
   final String levelId;
+  final String? evaluationDate;
   final String studentId;
   final String studentName;
   final String studentLastname;
@@ -341,12 +341,15 @@ class AssessmentReportItem {
 
   const AssessmentReportItem({
     required this.evaluationId,
+    required this.regisDetailId,
     required this.academicId,
     required this.academicYear,
     required this.semester,
     required this.evaluationType,
     required this.subjectId,
+    required this.subjectDetailId,
     required this.levelId,
+    required this.evaluationDate,
     required this.studentId,
     required this.studentName,
     required this.studentLastname,
@@ -363,12 +366,15 @@ class AssessmentReportItem {
   factory AssessmentReportItem.fromJson(Map<String, dynamic> json) {
     return AssessmentReportItem(
       evaluationId: json['evaluation_id'] as String? ?? '',
+      regisDetailId: _toInt(json['regis_detail_id']) ?? 0,
       academicId: json['academic_id'] as String? ?? '',
       academicYear: json['academic_year'] as String?,
       semester: json['semester'] as String? ?? '',
       evaluationType: json['evaluation_type'] as String? ?? '',
       subjectId: json['subject_id'] as String? ?? '',
+      subjectDetailId: json['subject_detail_id'] as String? ?? '',
       levelId: json['level_id'] as String? ?? '',
+      evaluationDate: json['evaluation_date'] as String?,
       studentId: json['student_id'] as String? ?? '',
       studentName: json['student_name'] as String? ?? '',
       studentLastname: json['student_lastname'] as String? ?? '',
@@ -391,6 +397,9 @@ class AssessmentReportItem {
       case 'academicId':
       case 'academic_id':
         return academicId;
+      case 'regisDetailId':
+      case 'regis_detail_id':
+        return regisDetailId;
       case 'academicYear':
       case 'academic_year':
         return academicYear;
@@ -405,9 +414,15 @@ class AssessmentReportItem {
       case 'subjectId':
       case 'subject_id':
         return subjectId;
+      case 'subjectDetailId':
+      case 'subject_detail_id':
+        return subjectDetailId;
       case 'levelId':
       case 'level_id':
         return levelId;
+      case 'evaluationDate':
+      case 'evaluation_date':
+        return evaluationDate;
       case 'studentName':
       case 'student_name':
         return studentName;
