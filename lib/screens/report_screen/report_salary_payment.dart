@@ -429,67 +429,64 @@ class _ReportSalaryPaymentScreenState
 
     return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  SummaryCard(
-                    label: 'ລາຍການທັງໝົດ',
-                    amount: payments.length.toDouble(),
-                    icon: Icons.receipt_long_rounded,
-                    color: AppColors.primary,
-                    bgColor: AppColors.primary.withValues(alpha: 0.12),
-                    formatKip: (v) => '${v.toInt()} ລາຍການ',
-                  ),
-                  const SizedBox(width: 12),
-                  SummaryCard(
-                    label: 'ຈ່າຍແລ້ວ',
-                    amount: paidCount.toDouble(),
-                    icon: Icons.check_circle_outline_rounded,
-                    color: AppColors.success,
-                    bgColor: AppColors.success.withValues(alpha: 0.12),
-                    formatKip: (v) => '${v.toInt()} ລາຍການ',
-                  ),
-                  const SizedBox(width: 12),
-                  SummaryCard(
-                    label: 'ຄ້າງຈ່າຍ',
-                    amount: pendingCount.toDouble(),
-                    icon: Icons.pending_actions_rounded,
-                    color: AppColors.warning,
-                    bgColor: AppColors.warning.withValues(alpha: 0.12),
-                    formatKip: (v) => '${v.toInt()} ລາຍການ',
-                  ),
-                  const SizedBox(width: 12),
-                  SummaryCard(
-                    label: 'ມູນຄ່າລວມ',
-                    amount: totalAmount,
-                    icon: Icons.attach_money_rounded,
-                    color: AppColors.info,
-                    bgColor: AppColors.info.withValues(alpha: 0.12),
-                    formatKip: (v) => FormatUtils.formatKip(v.toInt()),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildFilterSection(
-                hasData: hasData,
-                isLoading: salaryState.isLoading,
-                teacherItems: teacherItems,
-              ),
-              const SizedBox(height: 16),
-              Expanded(
-                child: _buildDataTable(
-                  payments: payments,
-                  columns: columns,
-                  error: salaryState.error,
-                  isLoading: salaryState.isLoading,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SummaryCard(
+                  label: 'ລາຍການທັງໝົດ',
+                  amount: payments.length.toDouble(),
+                  icon: Icons.receipt_long_rounded,
+                  color: AppColors.primary,
+                  bgColor: AppColors.primary.withValues(alpha: 0.12),
+                  formatKip: (v) => '${v.toInt()} ລາຍການ',
                 ),
+                const SizedBox(width: 12),
+                SummaryCard(
+                  label: 'ຈ່າຍແລ້ວ',
+                  amount: paidCount.toDouble(),
+                  icon: Icons.check_circle_outline_rounded,
+                  color: AppColors.success,
+                  bgColor: AppColors.success.withValues(alpha: 0.12),
+                  formatKip: (v) => '${v.toInt()} ລາຍການ',
+                ),
+                const SizedBox(width: 12),
+                SummaryCard(
+                  label: 'ຄ້າງຈ່າຍ',
+                  amount: pendingCount.toDouble(),
+                  icon: Icons.pending_actions_rounded,
+                  color: AppColors.warning,
+                  bgColor: AppColors.warning.withValues(alpha: 0.12),
+                  formatKip: (v) => '${v.toInt()} ລາຍການ',
+                ),
+                const SizedBox(width: 12),
+                SummaryCard(
+                  label: 'ມູນຄ່າລວມ',
+                  amount: totalAmount,
+                  icon: Icons.attach_money_rounded,
+                  color: AppColors.info,
+                  bgColor: AppColors.info.withValues(alpha: 0.12),
+                  formatKip: (v) => FormatUtils.formatKip(v.toInt()),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildFilterSection(
+              hasData: hasData,
+              isLoading: salaryState.isLoading,
+              teacherItems: teacherItems,
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _buildDataTable(
+                payments: payments,
+                columns: columns,
+                error: salaryState.error,
+                isLoading: salaryState.isLoading,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
         if (_isPreparingReceiptPrint)
           const PrintPreparationOverlay(
