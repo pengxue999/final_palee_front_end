@@ -7,6 +7,7 @@ import 'package:printing/printing.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../../core/constants/app_colors.dart';
+import 'pdf_preview_pane.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_toast.dart';
 
@@ -24,7 +25,7 @@ Future<void> showPdfPreviewDialog({
   required String documentId,
   required String title,
   required String fileNamePrefix,
-}) {
+}) async {
   return showDialog(
     context: context,
     useRootNavigator: false,
@@ -173,7 +174,26 @@ class _PrintDialogState extends State<_PrintDialog>
 
   Future<void> _doPrint() async {
     if (_isWebMode) {
-      await _doSavePdf();
+      setState(() => _printing = true);
+      try {
+        final printed = await Printing.layoutPdf(
+          onLayout: (_) async => widget.pdfBytes,
+          name: '${widget.fileNamePrefix}_${widget.documentId}',
+        );
+
+        if (!mounted) return;
+
+        setState(() => _printing = false);
+
+        if (!printed) {
+          _showErrorSnackBar('ຍົກເລີກການພິມ.');
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _printing = false);
+          _showErrorSnackBar('ພິມບໍ່ສຳເລັດ: $e');
+        }
+      }
       return;
     }
 
@@ -191,18 +211,11 @@ class _PrintDialogState extends State<_PrintDialog>
         return;
       }
 
-      final printed = defaultTargetPlatform == TargetPlatform.windows
-          ? await Printing.layoutPdf(
-              onLayout: (_) async => widget.pdfBytes,
-              name: '${widget.fileNamePrefix}_${widget.documentId}',
-              dynamicLayout: false,
-              usePrinterSettings: true,
-            )
-          : await Printing.directPrintPdf(
-              printer: selectedPrinter,
-              onLayout: (_) async => widget.pdfBytes,
-              name: '${widget.fileNamePrefix}_${widget.documentId}',
-            );
+      final printed = await Printing.directPrintPdf(
+        printer: selectedPrinter,
+        onLayout: (_) async => widget.pdfBytes,
+        name: '${widget.fileNamePrefix}_${widget.documentId}',
+      );
 
       if (!mounted) return;
 
@@ -364,7 +377,7 @@ class _PrintDialogState extends State<_PrintDialog>
                     icon: _isWebMode
                         ? Icons.picture_as_pdf_rounded
                         : Icons.print_outlined,
-                    label: _isWebMode ? 'PDF export' : 'Connected printer',
+                    label: _isWebMode ? 'PDF preview' : 'Connected printer',
                   ),
                   const SizedBox(width: 8),
                   _HeaderPill(
@@ -406,12 +419,14 @@ class _PrintDialogState extends State<_PrintDialog>
             child: Column(
               children: [
                 Expanded(
-                  child: SfPdfViewer.memory(
-                    widget.pdfBytes,
-                    canShowPaginationDialog: true,
-                    canShowScrollHead: true,
-                    pageSpacing: 16,
-                  ),
+                  child: _isWebMode
+                      ? buildPdfPreviewPane(widget.pdfBytes)
+                      : SfPdfViewer.memory(
+                          widget.pdfBytes,
+                          canShowPaginationDialog: true,
+                          canShowScrollHead: true,
+                          pageSpacing: 16,
+                        ),
                 ),
               ],
             ),
@@ -502,10 +517,11 @@ class _PrintDialogState extends State<_PrintDialog>
           children: [
             _buildInfoCard(
               icon: Icons.picture_as_pdf_rounded,
-              title: 'PDF Export',
+              title: 'PDF Preview',
               description:
-                  'ໃນ Web ຈະສະແດງສະເພາະການບັນທຶກ PDF ເທົ່ານັ້ນ ເພື່ອໃຫ້ download ເອກະສານໄດ້ທັນທີ.',
-              caption: 'ບໍ່ສະແດງປຸ່ມພິມ ແລະ ບໍ່ໂຫຼດລາຍຊື່ printer ໃນ browser.',
+                  'ໃນ Web ຈະສະແດງ preview PDF ຢູ່ໃນຫນ້ານີ້ ເພື່ອໃຫ້ກວດເບິ່ງເອກະສານກ່ອນພິມ ຫຼື ບັນທຶກ.',
+              caption:
+                  'ປຸ່ມພິມຈະເປີດ browser print dialog ແລະ ປຸ່ມບັນທຶກຈະດາວໂຫຼດ PDF.',
             ),
           ],
         ),
@@ -592,16 +608,14 @@ class _PrintDialogState extends State<_PrintDialog>
                 icon: Icons.download_rounded,
                 variant: AppButtonVariant.success,
               ),
-              if (!_isWebMode) ...[
-                const SizedBox(width: 12),
-                AppButton(
-                  onPressed: canPrint ? _doPrint : null,
-                  label: _printing ? 'ກຳລັງພິມ...' : 'ພິມ',
-                  icon: Icons.print_rounded,
-                  variant: AppButtonVariant.primary,
-                  isLoading: _printing,
-                ),
-              ],
+              const SizedBox(width: 12),
+              AppButton(
+                onPressed: canPrint ? _doPrint : null,
+                label: _printing ? 'ກຳລັງພິມ...' : 'ພິມ',
+                icon: Icons.print_rounded,
+                variant: AppButtonVariant.primary,
+                isLoading: _printing,
+              ),
             ],
           ),
         ],

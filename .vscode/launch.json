@@ -2,15 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     
+    
     {
-      "name": "Flutter Windows (ASCII path)",
+      "name": "Flutter Chrome",
       "request": "launch",
       "type": "dart",
       "program": "lib/main.dart",
-      "cwd": "D:/A/palee_elite_training_center_windows",
-      "templateFor": "",
-      "flutterMode": "debug",
-      "deviceId": "windows"
+      "cwd": "${workspaceFolder}",
+      "deviceId": "chrome"
+    },
+    {
+      "name": "Flutter Edge",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "cwd": "${workspaceFolder}",
+      "deviceId": "edge"
     }
   ]
 }
