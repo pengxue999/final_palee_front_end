@@ -7,9 +7,7 @@ class DonationModel {
   final String donationCategory;
   final String donationName;
   final double amount;
-  final int? unitId;
-  final String? unitName;
-  final String? description;
+  final String unit;
   final String donationDate;
   final String? createdAt;
 
@@ -22,9 +20,7 @@ class DonationModel {
     required this.donationCategory,
     required this.donationName,
     required this.amount,
-    this.unitId,
-    this.unitName,
-    this.description,
+    required this.unit,
     required this.donationDate,
     this.createdAt,
   });
@@ -51,9 +47,7 @@ class DonationModel {
           '',
       donationName: json['donation_name'] as String? ?? '',
       amount: parseAmount(json['amount']),
-      unitId: json['unit_id'] as int?,
-      unitName: json['unit_name'] as String?,
-      description: json['description'] as String?,
+      unit: json['unit'] as String? ?? json['unit_name'] as String? ?? '',
       donationDate: json['donation_date'] as String? ?? '',
       createdAt: json['created_at'] as String?,
     );
@@ -79,12 +73,8 @@ class DonationModel {
         return donationName;
       case 'amount':
         return amount;
-      case 'unitId':
-        return unitId;
-      case 'unitName':
-        return unitName;
-      case 'description':
-        return description;
+      case 'unit':
+        return unit;
       case 'donationDate':
         return donationDate;
       case 'createdAt':
@@ -97,32 +87,28 @@ class DonationModel {
 
 class DonationRequest {
   final String donorId;
-  final String donationCategory;
+  final int donationCategoryId;
   final String donationName;
   final double amount;
-  final int? unitId;
-  final String? description;
+  final String unit;
   final String donationDate;
 
   DonationRequest({
     required this.donorId,
-    required this.donationCategory,
+    required this.donationCategoryId,
     required this.donationName,
     required this.amount,
-    this.unitId,
-    this.description,
+    required this.unit,
     required this.donationDate,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'donor_id': donorId,
-      'donation_category': donationCategory,
+      'donation_category_id': donationCategoryId,
       'donation_name': donationName,
       'amount': amount,
-      if (unitId != null) 'unit_id': unitId,
-      if (description != null && description!.isNotEmpty)
-        'description': description,
+      'unit': unit,
       'donation_date': donationDate,
     };
   }
@@ -130,31 +116,29 @@ class DonationRequest {
 
 class DonationUpdateRequest {
   final String? donorId;
-  final String? donationCategory;
+  final int? donationCategoryId;
   final String? donationName;
   final double? amount;
-  final int? unitId;
-  final String? description;
+  final String? unit;
   final String? donationDate;
 
   DonationUpdateRequest({
     this.donorId,
-    this.donationCategory,
+    this.donationCategoryId,
     this.donationName,
     this.amount,
-    this.unitId,
-    this.description,
+    this.unit,
     this.donationDate,
   });
 
   Map<String, dynamic> toJson() {
     return {
       if (donorId != null) 'donor_id': donorId,
-      if (donationCategory != null) 'donation_category': donationCategory,
+      if (donationCategoryId != null)
+        'donation_category_id': donationCategoryId,
       if (donationName != null) 'donation_name': donationName,
       if (amount != null) 'amount': amount,
-      if (unitId != null) 'unit_id': unitId,
-      if (description != null) 'description': description,
+      if (unit != null) 'unit': unit,
       if (donationDate != null) 'donation_date': donationDate,
     };
   }

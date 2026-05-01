@@ -2,23 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import '../../core/utils/donation_certificate_printer.dart';
-import '../../core/constants/fixed_donation_categories.dart';
 import '../../core/utils/format_utils.dart';
+import '../../models/donation_category_model.dart';
 import '../../models/donation_model.dart';
 import '../../models/donor_model.dart';
-import '../../models/unit_model.dart';
+import '../../providers/donation_category_provider.dart';
 import '../../providers/donation_provider.dart';
 import '../../providers/donor_provider.dart';
-import '../../providers/unit_provider.dart';
 import '../../widgets/app_alerts.dart';
 import '../../widgets/success_overlay.dart';
 import '../../widgets/app_data_table.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/app_editable_dropdown.dart';
 import '../../widgets/app_dropdown.dart';
 import '../../widgets/app_text_field.dart';
 import '../../widgets/app_date_field.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/print_preparation_overlay.dart';
+
+const _donationUnitOptions = ['ແພັກ', 'ຫົວ', 'ກີບ', 'ຖົງ', 'ອັນ', 'ໝ່ວຍ'];
 
 class DonationScreen extends ConsumerStatefulWidget {
   const DonationScreen({super.key});
@@ -36,20 +38,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
 
   final _nameController = TextEditingController();
   final _amountController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _unitController = TextEditingController();
   final _dateController = TextEditingController();
 
   String? _selectedDonorId;
-  String? _selectedCategory;
-  int? _selectedUnitId;
+  int? _selectedCategoryId;
   bool _autoValidate = false;
 
   bool get _isFormValid {
     return _nameController.text.trim().isNotEmpty &&
         _amountController.text.trim().isNotEmpty &&
         _selectedDonorId != null &&
-        _selectedCategory != null &&
-        _selectedUnitId != null;
+        _selectedCategoryId != null &&
+        _unitController.text.trim().isNotEmpty;
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -60,7 +61,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(donationProvider.notifier).getDonations();
       ref.read(donorProvider.notifier).getDonors();
-      ref.read(unitProvider.notifier).getUnits();
+      ref.read(donationCategoryProvider.notifier).getDonationCategories();
       if (mounted) {
         final error = ref.read(donationProvider).error;
         if (error != null) {
@@ -72,7 +73,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
 
   List<DonationModel> get _donations => ref.watch(donationProvider).donations;
   List<DonorModel> get _donors => ref.watch(donorProvider).donors;
-  List<UnitModel> get _units => ref.watch(unitProvider).units;
+  List<DonationCategoryModel> get _categories =>
+      ref.watch(donationCategoryProvider).donationCategories;
 
   String _formatDateForApi(String dateStr) {
     try {
@@ -92,13 +94,12 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
   void _resetForm() {
     _nameController.clear();
     _amountController.clear();
-    _descriptionController.clear();
+    _unitController.clear();
     final now = DateTime.now();
     _dateController.text =
         '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     _selectedDonorId = null;
-    _selectedCategory = null;
-    _selectedUnitId = null;
+    _selectedCategoryId = null;
     selectedItem = null;
     isEditing = false;
     _autoValidate = false;
@@ -106,10 +107,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
 
   void _openAdd() async {
     _resetForm();
-    if (_donors.isEmpty || _units.isEmpty) {
+    if (_donors.isEmpty || _categories.isEmpty) {
       await Future.wait([
         ref.read(donorProvider.notifier).getDonors(),
-        ref.read(unitProvider.notifier).getUnits(),
+        ref.read(donationCategoryProvider.notifier).getDonationCategories(),
       ]);
     }
     setState(() {
@@ -121,17 +122,16 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
   void _openEdit(DonationModel item) async {
     await Future.wait([
       ref.read(donorProvider.notifier).getDonors(),
-      ref.read(unitProvider.notifier).getUnits(),
+      ref.read(donationCategoryProvider.notifier).getDonationCategories(),
     ]);
 
     await Future.delayed(const Duration(milliseconds: 100));
 
     final donors = ref.read(donorProvider).donors;
-    final units = ref.read(unitProvider).units;
 
     _nameController.text = item.donationName;
     _amountController.text = FormatUtils.formatNumber(item.amount.toInt());
-    _descriptionController.text = item.description ?? '';
+    _unitController.text = item.unit;
     _dateController.text = _formatDateForApi(item.donationDate);
 
     final matchingDonor = donors.firstWhere(
@@ -140,15 +140,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     );
     _selectedDonorId = matchingDonor.donorId;
 
-    _selectedCategory = fixedDonationCategories.contains(item.donationCategory)
-        ? item.donationCategory
-        : inKindDonationCategory;
-
-    final matchingUnit = units.firstWhere(
-      (u) => u.unitName == item.unitName,
-      orElse: () => units.first,
-    );
-    _selectedUnitId = matchingUnit.unitId;
+    _selectedCategoryId = item.donationCategoryId;
 
     setState(() {
       selectedItem = item;
@@ -167,8 +159,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     }
 
     if (_selectedDonorId == null ||
-        _selectedCategory == null ||
-        _selectedUnitId == null) {
+        _selectedCategoryId == null ||
+        _unitController.text.trim().isEmpty) {
       return;
     }
 
@@ -183,11 +175,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     if (isEditing && selectedItem != null) {
       final request = DonationUpdateRequest(
         donorId: _selectedDonorId!,
-        donationCategory: _selectedCategory!,
+        donationCategoryId: _selectedCategoryId!,
         donationName: _nameController.text.trim(),
         amount: amount,
-        unitId: _selectedUnitId,
-        description: _descriptionController.text.trim(),
+        unit: _unitController.text.trim(),
         donationDate: _formatDateForApi(_dateController.text),
       );
       success = await ref
@@ -196,11 +187,10 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     } else {
       final request = DonationRequest(
         donorId: _selectedDonorId!,
-        donationCategory: _selectedCategory!,
+        donationCategoryId: _selectedCategoryId!,
         donationName: _nameController.text.trim(),
         amount: amount,
-        unitId: _selectedUnitId,
-        description: _descriptionController.text.trim(),
+        unit: _unitController.text.trim(),
         donationDate: _formatDateForApi(_dateController.text),
       );
       success = await ref
@@ -213,12 +203,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
     }
 
     if (success) {
-      SuccessOverlay.show(
-        context,
-        message: isEditing
-            ? 'ອັບເດດການບໍລິຈາກສຳເລັດ'
-            : 'ບັນທຶກການບໍລິຈາກສຳເລັດ',
-      );
       setState(() {
         showAddEditModal = false;
         _resetForm();
@@ -290,7 +274,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
   void dispose() {
     _nameController.dispose();
     _amountController.dispose();
-    _descriptionController.dispose();
+    _unitController.dispose();
     _dateController.dispose();
     super.dispose();
   }
@@ -321,19 +305,13 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
         key: 'unit',
         label: 'ຫົວໜ່ວຍ',
         flex: 2,
-        render: (context, item) => Text(item.unitName ?? '-'),
+        render: (context, item) => Text(item.unit.isEmpty ? '-' : item.unit),
       ),
       DataColumnDef<DonationModel>(
         key: 'donationCategory',
         label: 'ປະເພດ',
         flex: 2,
         render: (context, item) => Text(item.donationCategory),
-      ),
-      DataColumnDef<DonationModel>(
-        key: 'description',
-        label: 'ລາຍະລະອຽດ',
-        flex: 2,
-        render: (context, item) => Text(item.description ?? '-'),
       ),
       DataColumnDef<DonationModel>(
         key: 'donationDate',
@@ -362,7 +340,7 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                 'donationName',
                 'donorFullName',
                 'donationCategory',
-                'description',
+                'unit',
               ],
               addLabel: 'ເພີ່ມການບໍລິຈາກ',
               data: _donations,
@@ -384,6 +362,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
   }
 
   Widget _buildFormModal() {
+    final isSubmitting = ref.watch(donationProvider).isCreating;
+
     return Material(
       color: Colors.black54,
       child: Center(
@@ -409,7 +389,8 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
               AppButton(
                 label: isEditing ? 'ຢືນຢັນ' : 'ບັນທຶກ',
                 icon: Icons.save_rounded,
-                onPressed: _isFormValid ? _save : null,
+                isLoading: isSubmitting,
+                onPressed: (isSubmitting || !_isFormValid) ? null : _save,
               ),
             ],
           ),
@@ -446,20 +427,20 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: AppDropdown<String>(
+                      child: AppDropdown<int>(
                         label: 'ປະເພດການບໍລິຈາກ',
                         hint: 'ເລືອກປະເພດ',
-                        value: _selectedCategory,
-                        items: fixedDonationCategories
+                        value: _selectedCategoryId,
+                        items: _categories
                             .map(
                               (category) => DropdownMenuItem(
-                                value: category,
-                                child: Text(category),
+                                value: category.donationCategoryId,
+                                child: Text(category.donationCategoryName),
                               ),
                             )
                             .toList(),
                         onChanged: (v) => setState(() {
-                          _selectedCategory = v;
+                          _selectedCategoryId = v;
                         }),
                         required: true,
                       ),
@@ -503,22 +484,19 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                   mainAxisSize: MainAxisSize.max,
                   children: [
                     Expanded(
-                      child: AppDropdown<int>(
+                      child: AppEditableDropdown(
                         label: 'ຫົວໜ່ວຍ',
-                        hint: 'ເລືອກຫົວໜ່ວຍ',
-                        value: _selectedUnitId,
-                        items: _units
-                            .map(
-                              (u) => DropdownMenuItem(
-                                value: u.unitId,
-                                child: Text(u.unitName),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() {
-                          _selectedUnitId = v;
-                        }),
+                        hint: 'ເລືອກ ຫຼື ພິມຫົວໜ່ວຍ',
+                        controller: _unitController,
+                        options: _donationUnitOptions,
                         required: true,
+                        validator: (value) {
+                          if ((value ?? '').trim().isEmpty) {
+                            return 'ກະລຸນາລະບຸຫົວໜ່ວຍ';
+                          }
+                          return null;
+                        },
+                        onChanged: (_) => setState(() {}),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -530,14 +508,6 @@ class _DonationScreenState extends ConsumerState<DonationScreen> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                AppTextField(
-                  label: 'ລາຍະລະອຽດ',
-                  hint: 'ລາຍລະອຽດເພີ່ມເຕີມ (ບໍ່ຈຳເປັນ)',
-                  controller: _descriptionController,
-                  maxLines: 2,
-                  onChanged: (_) => setState(() {}),
                 ),
               ],
             ),

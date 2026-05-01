@@ -22,9 +22,9 @@ import 'package:palee_elite_training_center/screens/master_data_screen/discounts
 import 'package:palee_elite_training_center/screens/master_data_screen/districts_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/fees_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/expense_types_screen.dart';
+import 'package:palee_elite_training_center/screens/master_data_screen/donation_category_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/donors_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/provinces_screen.dart';
-import 'package:palee_elite_training_center/screens/master_data_screen/unit_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/users_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/academic_years_screen.dart';
 import 'package:palee_elite_training_center/screens/master_data_screen/subject_categories_screen.dart';
@@ -254,10 +254,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 const MaterialPage(child: DonorsScreen()),
           ),
           GoRoute(
-            path: '/units',
-            name: 'units',
+            path: '/donation-categories',
+            name: 'donation-categories',
             pageBuilder: (context, state) =>
-                const MaterialPage(child: UnitScreen()),
+                const MaterialPage(child: DonationCategoryScreen()),
           ),
           GoRoute(
             path: '/users',

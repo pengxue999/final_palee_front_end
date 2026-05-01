@@ -1,26 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palee_elite_training_center/widgets/api_error_handler.dart';
+
 import '../../core/constants/app_colors.dart';
-import '../../models/unit_model.dart';
-import '../../providers/unit_provider.dart';
-import '../../widgets/app_alerts.dart';
+import '../../models/donation_category_model.dart';
+import '../../providers/donation_category_provider.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/app_data_table.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_text_field.dart';
-import '../../widgets/app_button.dart';
 
-class UnitScreen extends ConsumerStatefulWidget {
-  const UnitScreen({super.key});
+class DonationCategoryScreen extends ConsumerStatefulWidget {
+  const DonationCategoryScreen({super.key});
 
   @override
-  ConsumerState<UnitScreen> createState() => _UnitScreenState();
+  ConsumerState<DonationCategoryScreen> createState() =>
+      _DonationCategoryScreenState();
 }
 
-class _UnitScreenState extends ConsumerState<UnitScreen> {
+class _DonationCategoryScreenState
+    extends ConsumerState<DonationCategoryScreen> {
   bool showAddEditModal = false;
   bool showDeleteDialog = false;
-  UnitModel? selectedItem;
+  DonationCategoryModel? selectedItem;
   bool isEditing = false;
 
   final _nameController = TextEditingController();
@@ -29,9 +31,9 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ref.read(unitProvider.notifier).getUnits();
+      ref.read(donationCategoryProvider.notifier).getDonationCategories();
       if (mounted) {
-        final error = ref.read(unitProvider).error;
+        final error = ref.read(donationCategoryProvider).error;
         if (error != null) {
           ApiErrorHandler.handle(context, error);
         }
@@ -53,8 +55,8 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
     });
   }
 
-  void _openEdit(UnitModel item) {
-    _nameController.text = item.unitName;
+  void _openEdit(DonationCategoryModel item) {
+    _nameController.text = item.donationCategoryName;
     setState(() {
       selectedItem = item;
       showAddEditModal = true;
@@ -63,23 +65,32 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
   }
 
   Future<void> _save() async {
-    if (_nameController.text.trim().isEmpty) return;
-    final request = UnitRequest(unitName: _nameController.text.trim());
+    if (_nameController.text.trim().isEmpty) {
+      return;
+    }
+
+    final request = DonationCategoryRequest(
+      donationCategoryName: _nameController.text.trim(),
+    );
+
     bool success;
     if (isEditing && selectedItem != null) {
       success = await ref
-          .read(unitProvider.notifier)
-          .updateUnit(selectedItem!.unitId, request);
+          .read(donationCategoryProvider.notifier)
+          .updateDonationCategory(selectedItem!.donationCategoryId, request);
     } else {
-      success = await ref.read(unitProvider.notifier).createUnit(request);
+      success = await ref
+          .read(donationCategoryProvider.notifier)
+          .createDonationCategory(request);
     }
+
     if (success && mounted) {
       setState(() {
         showAddEditModal = false;
         _resetForm();
       });
     } else if (mounted) {
-      final errorMessage = ref.read(unitProvider).error;
+      final errorMessage = ref.read(donationCategoryProvider).error;
       ApiErrorHandler.handle(
         context,
         errorMessage ?? 'ເກີດຂໍ້ຜິດພາດໃນການບັນທຶກຂໍ້ມູນ',
@@ -87,16 +98,19 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
     }
   }
 
-  void _confirmDelete(UnitModel item) => setState(() {
+  void _confirmDelete(DonationCategoryModel item) => setState(() {
     selectedItem = item;
     showDeleteDialog = true;
   });
 
   Future<void> _delete() async {
-    if (selectedItem == null) return;
+    if (selectedItem == null) {
+      return;
+    }
+
     final success = await ref
-        .read(unitProvider.notifier)
-        .deleteUnit(selectedItem!.unitId);
+        .read(donationCategoryProvider.notifier)
+        .deleteDonationCategory(selectedItem!.donationCategoryId);
 
     if (mounted) {
       setState(() {
@@ -109,7 +123,7 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
         selectedItem = null;
       });
     } else if (mounted) {
-      final errorMessage = ref.read(unitProvider).error;
+      final errorMessage = ref.read(donationCategoryProvider).error;
       ApiErrorHandler.handle(
         context,
         errorMessage ?? 'ເກີດຂໍ້ຜິດພາດໃນການລຶບຂໍ້ມູນ',
@@ -125,12 +139,15 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(unitProvider);
-    final isLoading = state.isLoading && state.units.isEmpty;
+    final state = ref.watch(donationCategoryProvider);
+    final isLoading = state.isLoading && state.donationCategories.isEmpty;
 
     final columns = [
-      DataColumnDef<UnitModel>(key: 'unitId', label: 'ລະຫັດ', flex: 1),
-      DataColumnDef<UnitModel>(key: 'unitName', label: 'ຊື່ຫົວໜ່ວຍ', flex: 5),
+      DataColumnDef<DonationCategoryModel>(
+        key: 'donationCategoryName',
+        label: 'ຊື່ປະເພດການບໍລິຈາກ',
+        flex: 5,
+      ),
     ];
 
     return Stack(
@@ -140,14 +157,16 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: AppDataTable<UnitModel>(
-                  data: isLoading ? _getMockUnits() : state.units,
+                child: AppDataTable<DonationCategoryModel>(
+                  data: isLoading
+                      ? _getMockDonationCategories()
+                      : state.donationCategories,
                   columns: columns,
                   onAdd: _openAdd,
                   onEdit: _openEdit,
                   onDelete: _confirmDelete,
-                  searchKeys: const ['unitName'],
-                  addLabel: 'ເພີ່ມຫົວໜ່ວຍ',
+                  searchKeys: const ['donationCategoryName'],
+                  addLabel: 'ເພີ່ມປະເພດການບໍລິຈາກ',
                   isLoading: isLoading,
                 ),
               ),
@@ -160,24 +179,25 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
     );
   }
 
-  List<UnitModel> _getMockUnits() {
+  List<DonationCategoryModel> _getMockDonationCategories() {
     return List.generate(
       5,
-      (index) => UnitModel(unitId: index + 1, unitName: 'ຫົວໜ່ວຍ ${index + 1}'),
+      (index) => DonationCategoryModel(
+        donationCategoryId: index + 1,
+        donationCategoryName: 'ປະເພດ ${index + 1}',
+      ),
     );
   }
 
-  bool get _isFormValid {
-    return _nameController.text.isNotEmpty;
-  }
+  bool get _isFormValid => _nameController.text.isNotEmpty;
 
   Widget _buildFormModal() {
-    final isLoading = ref.watch(unitProvider).isLoading;
+    final isLoading = ref.watch(donationCategoryProvider).isLoading;
     return Material(
       color: Colors.black54,
       child: Center(
         child: AppDialog(
-          title: isEditing ? 'ແກ້ໄຂຫົວໜ່ວຍ' : 'ເພີ່ມຫົວໜ່ວຍໃໝ່',
+          title: isEditing ? 'ແກ້ໄຂປະເພດການບໍລິຈາກ' : 'ເພີ່ມປະເພດການບໍລິຈາກໃໝ່',
           size: AppDialogSize.medium,
           onClose: () => setState(() {
             showAddEditModal = false;
@@ -204,8 +224,8 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
             ],
           ),
           child: AppTextField(
-            label: 'ຫົວໜ່ວຍ',
-            hint: 'ປ້ອນຫົວນ່ວຍ',
+            label: 'ປະເພດການບໍລິຈາກ',
+            hint: 'ປ້ອນຊື່ປະເພດການບໍລິຈາກ',
             controller: _nameController,
             required: true,
             onChanged: (_) => setState(() {}),
@@ -216,8 +236,11 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
   }
 
   Widget _buildDeleteDialog() {
-    if (selectedItem == null) return const SizedBox.shrink();
-    final isLoading = ref.watch(unitProvider).isLoading;
+    if (selectedItem == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isLoading = ref.watch(donationCategoryProvider).isLoading;
     return Material(
       color: Colors.black54,
       child: Center(
@@ -258,7 +281,7 @@ class _UnitScreenState extends ConsumerState<UnitScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບ "${selectedItem!.unitName}"?',
+                'ທ່ານແນ່ໃຈບໍ່ວ່າຕ້ອງການລຶບ "${selectedItem!.donationCategoryName}"?',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   fontSize: 14,

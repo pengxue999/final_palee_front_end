@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../core/constants/fixed_donation_categories.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/donation_report_printer.dart';
 import '../../core/utils/format_utils.dart';
 import '../../core/utils/report_export_action_helper.dart';
+import '../../models/donation_category_model.dart';
 import '../../models/donation_model.dart';
 import '../../models/donor_model.dart';
+import '../../providers/donation_category_provider.dart';
 import '../../providers/donation_provider.dart';
 import '../../providers/donor_provider.dart';
 import '../../services/report_service.dart';
@@ -18,7 +19,7 @@ import '../../widgets/app_toast.dart';
 import '../../widgets/loading_widget.dart';
 import '../../widgets/empty_widget.dart';
 import '../../widgets/print_preparation_overlay.dart';
-
+const cashDonationCategory = 'ເງິນສົດ';
 class ReportDonationScreen extends ConsumerStatefulWidget {
   const ReportDonationScreen({super.key});
 
@@ -48,6 +49,7 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
     await Future.wait([
       ref.read(donationProvider.notifier).getDonations(),
       ref.read(donorProvider.notifier).getDonors(),
+      ref.read(donationCategoryProvider.notifier).getDonationCategories(),
     ]);
     _generateAvailableYears();
   }
@@ -188,6 +190,9 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
   Widget build(BuildContext context) {
     final donationState = ref.watch(donationProvider);
     final donors = ref.watch(donorProvider).donors;
+    final donationCategories = ref
+        .watch(donationCategoryProvider)
+        .donationCategories;
     final filteredDonations = _getFilteredDonations();
 
     return Stack(
@@ -199,7 +204,11 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildFilters(donors, hasData: filteredDonations.isNotEmpty),
+                _buildFilters(
+                  donors,
+                  donationCategories,
+                  hasData: filteredDonations.isNotEmpty,
+                ),
                 Expanded(
                   child: donationState.isLoading
                       ? const LoadingWidget(message: 'ກຳລັງໂຫຼດຂໍ້ມູນ...')
@@ -231,7 +240,11 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
     );
   }
 
-  Widget _buildFilters(List<DonorModel> donors, {required bool hasData}) {
+  Widget _buildFilters(
+    List<DonorModel> donors,
+    List<DonationCategoryModel> donationCategories, {
+    required bool hasData,
+  }) {
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -315,10 +328,13 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
                       value: null,
                       child: Text('ທັງໝົດປະເພດ'),
                     ),
-                    ...fixedDonationCategories.map((category) {
+                    ...donationCategories.map((category) {
                       return DropdownMenuItem(
-                        value: category,
-                        child: Text(category, overflow: TextOverflow.ellipsis),
+                        value: category.donationCategoryName,
+                        child: Text(
+                          category.donationCategoryName,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }),
                   ],
@@ -393,7 +409,7 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
         flex: 2,
         render: (v, row) {
           final amount = (v as num).toDouble();
-          final isCashDonation = row.donationCategory == 'ເງິນສົດ';
+          final isCashDonation = row.donationCategory == cashDonationCategory;
           final displayText = isCashDonation
               ? _formatAmount(amount)
               : amount.toString();
@@ -409,7 +425,7 @@ class _ReportDonationScreenState extends ConsumerState<ReportDonationScreen> {
         },
       ),
       DataColumnDef<DonationModel>(
-        key: 'unitName',
+        key: 'unit',
         label: 'ຫົວໜ່ວຍ',
         flex: 1,
         render: (v, row) => Text(

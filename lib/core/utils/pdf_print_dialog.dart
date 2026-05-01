@@ -77,17 +77,22 @@ class _PrintDialogState extends State<_PrintDialog>
         normalized.contains('xps');
   }
 
-  List<Printer> _filterAvailablePrinters(List<Printer> printers) {
-    final visiblePrinters = defaultTargetPlatform == TargetPlatform.windows
-        ? () {
-            final physicalPrinters = printers
-                .where((printer) => !_isVirtualPdfPrinter(printer))
-                .toList();
-            return physicalPrinters.isNotEmpty ? physicalPrinters : printers;
-          }()
-        : printers;
+  bool _isUsbPrinter(Printer printer) {
+    return printer.url.toLowerCase().contains('usb');
+  }
 
-    return visiblePrinters.where((printer) => printer.isAvailable).toList();
+  List<Printer> _filterAvailablePrinters(List<Printer> printers) {
+    if (defaultTargetPlatform == TargetPlatform.windows) {
+      final physicalPrinters = printers
+          .where((printer) => !_isVirtualPdfPrinter(printer))
+          .toList();
+      final usbPrinters = physicalPrinters
+          .where((printer) => _isUsbPrinter(printer) && printer.isAvailable)
+          .toList();
+      return usbPrinters;
+    }
+
+    return printers.where((printer) => printer.isAvailable).toList();
   }
 
   Printer? _pickDefaultPrinter(List<Printer> printers) {
@@ -555,11 +560,11 @@ class _PrintDialogState extends State<_PrintDialog>
                 padding: const EdgeInsets.all(18),
                 child: _buildInfoCard(
                   icon: Icons.print_disabled_rounded,
-                  title: 'ບໍ່ພົບເຄື່ອງປິ້ນເຕີ',
+                  title: 'ບໍ່ພົບເຄື່ອງປິ້ນເຕີ USB',
                   description:
-                      'ກະລຸນາກວດສອບການເຊື່ອມຕໍ່ printer ແລ້ວລອງໃໝ່ ຫຼື ໃຊ້ປຸ່ມບັນທຶກ PDF ແທນກໍໄດ້.',
+                      'ກະລຸນາເຊື່ອມຕໍ່ເຄື່ອງປິ້ນເຕີຜ່ານ USB ກ່ອນ ຈຶ່ງຈະສາມາດເລືອກພິມໄດ້.',
                   caption:
-                      'ເມື່ອມີ printer ທີ່ເຊື່ອມຢູ່ ລາຍການນີ້ຈະສະແດງໃຫ້ເລືອກທັນທີ.',
+                      'ເມື່ອເຊື່ອມ USB ກັບ printer ແລ້ວ ລາຍການຈະສະແດງຂຶ້ນທັນທີ.',
                 ),
               ),
             )
