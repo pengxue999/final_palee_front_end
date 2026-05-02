@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:palee_elite_training_center/core/utils/enum_localization.dart';
 import 'package:palee_elite_training_center/screens/auth/login_screen.dart';
 import 'package:palee_elite_training_center/screens/dashboard_screen.dart';
 import 'package:palee_elite_training_center/screens/donate_screen/donation_screen.dart';
@@ -53,11 +54,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn && !isLoginPage) return '/login';
       if (isLoggedIn && isLoginPage) {
-        if (authState.$3 == 'teacher') return '/teaching-tracking';
+        if (isTeacherRole(authState.$3)) return '/teaching-tracking';
         return '/';
       }
 
-      if (isLoggedIn && authState.$3 == 'teacher') {
+      if (isLoggedIn && isTeacherRole(authState.$3)) {
         final allowedRoutes = [
           '/teaching-tracking',
           '/evaluate-student',

@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class StudentModel {
   final String? studentId;
   final String studentName;
@@ -26,7 +28,7 @@ class StudentModel {
       studentId: json['student_id'] as String?,
       studentName: json['student_name'] as String,
       studentLastname: json['student_lastname'] as String,
-      gender: json['gender'] as String,
+      gender: localizeGender(json['gender'] as String?),
       studentContact: json['student_contact'] as String,
       parentsContact: json['parents_contact'] as String,
       school: json['school'] as String,
@@ -85,7 +87,7 @@ class StudentRequest {
   Map<String, dynamic> toJson() => {
     'student_name': studentName,
     'student_lastname': studentLastname,
-    'gender': gender,
+    'gender': apiGender(gender),
     'student_contact': studentContact,
     'parents_contact': parentsContact,
     'school': school,

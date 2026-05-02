@@ -163,19 +163,6 @@ class _DistrictsScreenState extends ConsumerState<DistrictsScreen> {
 
     final columns = [
       DataColumnDef<DistrictModel>(
-        key: 'districtId',
-        label: 'ລະຫັດເມືອງ',
-        flex: 2,
-        render: (value, row) => Text(
-          value.toString(),
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-      DataColumnDef<DistrictModel>(
         key: 'districtName',
         label: 'ຊື່ເມືອງ',
         flex: 3,

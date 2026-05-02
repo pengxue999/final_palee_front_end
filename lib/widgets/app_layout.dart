@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../core/constants/app_colors.dart';
+import '../core/utils/enum_localization.dart';
 import '../core/utils/responsive_utils.dart';
 import '../providers/auth_provider.dart';
 import 'sidebar.dart';
@@ -202,15 +203,6 @@ class _AppLayoutState extends ConsumerState<AppLayout> {
   }
 
   String _roleLabel(String role) {
-    switch (role.toLowerCase()) {
-      case 'admin':
-        return 'ຜູ້ດູແລລະບົບ';
-      case 'teacher':
-        return 'ຄູສອນ';
-      case 'staff':
-        return 'ພະນັກງານ';
-      default:
-        return role;
-    }
+    return localizeUserRole(role);
   }
 }

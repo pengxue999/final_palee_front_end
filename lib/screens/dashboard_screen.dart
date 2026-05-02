@@ -517,7 +517,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         else if (reportState.popularSubjectsError != null)
           _buildCompactErrorCard(reportState.popularSubjectsError!)
         else if (data == null || data.subjects.isEmpty)
-          _buildEmptyCard('ບໍ່ພົບຂໍ້ມູນວິຊາຍອດນິຍົມ')
+          SizedBox.shrink()
         else
           Column(
             children: [
@@ -573,31 +573,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyCard(String message) {
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          children: [
-            const Icon(
-              Icons.insights_outlined,
-              color: AppColors.mutedForeground,
-              size: 42,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              message,
-              style: const TextStyle(
-                color: AppColors.mutedForeground,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

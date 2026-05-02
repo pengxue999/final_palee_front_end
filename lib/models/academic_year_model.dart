@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class AcademicYearModel {
   final String? academicId;
   final String academicYear;
@@ -19,7 +21,9 @@ class AcademicYearModel {
       academicYear: json['academic_year'] as String? ?? '',
       startDate: json['start_date_at'] as String? ?? '',
       endDate: json['end_date_at'] as String? ?? '',
-      academicStatus: json['status'] as String? ?? 'ດໍາເນີນການ',
+      academicStatus: localizeAcademicStatus(
+        json['status'] as String? ?? 'ACTIVE',
+      ),
     );
   }
 
@@ -37,7 +41,7 @@ class AcademicYearModel {
       case 'academicStatus':
         return academicStatus;
       case 'status':
-        return academicStatus == 'ກຳລັງດຳເນີນ' ? 'ACTIVE' : 'COMPLETED';
+        return apiAcademicStatus(academicStatus);
       default:
         return null;
     }
@@ -61,7 +65,7 @@ class AcademicYearRequest {
     'academic_year': academicYear,
     'start_date_at': startDate,
     'end_date_at': endDate,
-    'status': academicStatus,
+    'status': apiAcademicStatus(academicStatus),
   };
 }
 

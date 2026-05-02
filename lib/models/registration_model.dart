@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class RegistrationModel {
   final String registrationId;
   final String? studentId;
@@ -36,11 +38,13 @@ class RegistrationModel {
       studentId: json['student_id'] as String?,
       studentName: json['student_name'] as String? ?? '',
       studentLastname: json['student_lastname'] as String? ?? '',
-      discountDescription: json['discount_description'] as String?,
+      discountDescription: localizeDiscountDescription(
+        json['discount_description'] as String?,
+      ),
       totalAmount: parseAmount(json['total_amount']),
       finalAmount: parseAmount(json['final_amount']),
       paidAmount: parseAmount(json['paid_amount']),
-      status: json['status'] as String? ?? '',
+      status: localizeRegistrationStatus(json['status'] as String?),
       registrationDate: json['registration_date'] as String? ?? '',
     );
   }
@@ -107,7 +111,7 @@ class RegistrationRequest {
     'discount_id': discountId,
     'total_amount': totalAmount,
     'final_amount': finalAmount,
-    'status': status,
+    'status': apiRegistrationStatus(status),
     'registration_date': registrationDate.toIso8601String(),
   };
 }

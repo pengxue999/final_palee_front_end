@@ -1,9 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../core/utils/enum_localization.dart';
 import '../models/academic_year_model.dart';
 import '../models/dashboard_model.dart';
 import '../services/dashboard_service.dart';
 
-final dashboardServiceProvider = Provider<DashboardService>((_) => DashboardService());
+final dashboardServiceProvider = Provider<DashboardService>(
+  (_) => DashboardService(),
+);
 
 class DashboardState {
   final DashboardStatsModel? stats;
@@ -30,7 +33,8 @@ class DashboardState {
     return DashboardState(
       stats: stats ?? this.stats,
       selectedAcademicYear: selectedAcademicYear ?? this.selectedAcademicYear,
-      availableAcademicYears: availableAcademicYears ?? this.availableAcademicYears,
+      availableAcademicYears:
+          availableAcademicYears ?? this.availableAcademicYears,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -43,7 +47,8 @@ class DashboardState {
   double get totalIncome => stats?.income.total ?? 0.0;
   double get totalExpenses => stats?.expenses.total ?? 0.0;
   double get balance => stats?.balance ?? 0.0;
-  String get currentAcademicYear => stats?.academicYear.academicYear ?? 'ບໍ່ມີຂໍ້ມູນ';
+  String get currentAcademicYear =>
+      stats?.academicYear.academicYear ?? 'ບໍ່ມີຂໍ້ມູນ';
 }
 
 class DashboardNotifier extends StateNotifier<DashboardState> {
@@ -55,10 +60,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _service.getDashboardStats(academicId: academicId);
-      state = state.copyWith(
-        stats: response.data,
-        isLoading: false,
-      );
+      state = state.copyWith(stats: response.data, isLoading: false);
     } catch (e) {
       state = state.copyWith(
         error: 'ບໍ່ສາມາດດຶງຂໍ້ມູນ Dashboard ໄດ້: $e',
@@ -81,9 +83,9 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
     state = state.copyWith(availableAcademicYears: academicYears);
 
     if (state.selectedAcademicYear == null) {
-      final activeYear = academicYears.where((ay) =>
-        ay.academicStatus == 'ດໍາເນີນການ' || ay.academicStatus == 'ACTIVE'
-      ).firstOrNull;
+      final activeYear = academicYears
+          .where((ay) => isActiveAcademicStatus(ay.academicStatus))
+          .firstOrNull;
 
       if (activeYear != null) {
         state = state.copyWith(selectedAcademicYear: activeYear);
@@ -96,6 +98,7 @@ class DashboardNotifier extends StateNotifier<DashboardState> {
   void clearError() => state = state.copyWith(error: null);
 }
 
-final dashboardProvider = StateNotifierProvider<DashboardNotifier, DashboardState>(
-  (ref) => DashboardNotifier(ref.read(dashboardServiceProvider)),
-);
+final dashboardProvider =
+    StateNotifierProvider<DashboardNotifier, DashboardState>(
+      (ref) => DashboardNotifier(ref.read(dashboardServiceProvider)),
+    );

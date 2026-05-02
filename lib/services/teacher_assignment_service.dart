@@ -28,6 +28,16 @@ class TeacherAssignmentService {
     return TeacherAssignmentSingleResponse.fromJson(_http.handleJson(response));
   }
 
+  Future<TeacherAssignmentResponse> createAssignmentsBatch(
+    TeacherAssignmentBatchRequest request,
+  ) async {
+    final response = await _http.post(
+      '/teacher-assignments/batch',
+      body: request.toJson(),
+    );
+    return TeacherAssignmentResponse.fromJson(_http.handleJson(response));
+  }
+
   Future<TeacherAssignmentSingleResponse> updateAssignment(
     String assignmentId,
     TeacherAssignmentRequest request,

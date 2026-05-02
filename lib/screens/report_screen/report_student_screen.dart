@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:palee_elite_training_center/core/constants/app_colors.dart';
 import 'package:palee_elite_training_center/core/utils/report_export_action_helper.dart';
 import 'package:palee_elite_training_center/core/utils/student_report_printer.dart';
+import 'package:palee_elite_training_center/core/utils/enum_localization.dart';
 import 'package:palee_elite_training_center/models/report_models.dart';
 import 'package:palee_elite_training_center/providers/academic_year_provider.dart';
 import 'package:palee_elite_training_center/providers/district_provider.dart';
@@ -255,11 +256,11 @@ class _ReportStudentScreenState extends ConsumerState<ReportStudentScreen> {
                             value: _selectedScholarship,
                             items: const [
                               DropdownMenuItem(
-                                value: 'ໄດ້ຮັບທຶນ',
+                                value: 'SCHOLARSHIP',
                                 child: Text('ໄດ້ຮັບທຶນ'),
                               ),
                               DropdownMenuItem(
-                                value: 'ບໍ່ໄດ້ຮັບທຶນ',
+                                value: 'NO_SCHOLARSHIP',
                                 child: Text('ບໍ່ໄດ້ຮັບທຶນ'),
                               ),
                             ],
@@ -278,11 +279,11 @@ class _ReportStudentScreenState extends ConsumerState<ReportStudentScreen> {
                             value: _selectedGender,
                             items: const [
                               DropdownMenuItem(
-                                value: 'ຊາຍ',
+                                value: 'MALE',
                                 child: Text('ຊາຍ'),
                               ),
                               DropdownMenuItem(
-                                value: 'ຍິງ',
+                                value: 'FEMALE',
                                 child: Text('ຍິງ'),
                               ),
                             ],
@@ -450,7 +451,9 @@ class _ReportStudentScreenState extends ConsumerState<ReportStudentScreen> {
           v?.toString() ?? '-',
           style: TextStyle(
             fontSize: 14,
-            color: v == 'ຊາຍ' ? Colors.blue : Colors.pink,
+            color: localizeGender(v?.toString()) == 'ຊາຍ'
+                ? Colors.blue
+                : Colors.pink,
             fontWeight: FontWeight.w500,
           ),
         ),

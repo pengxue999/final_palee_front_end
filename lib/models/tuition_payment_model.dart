@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class TuitionPaymentModel {
   final String tuitionPaymentId;
   final String registrationId;
@@ -33,7 +35,7 @@ class TuitionPaymentModel {
       studentName: json['student_name'] as String? ?? '',
       studentLastname: json['student_lastname'] as String? ?? '',
       paidAmount: parseAmount(json['paid_amount']),
-      paymentMethod: json['payment_method'] as String? ?? '',
+      paymentMethod: localizePaymentMethod(json['payment_method'] as String?),
       payDate: json['pay_date'] as String? ?? '',
     );
   }
@@ -75,7 +77,7 @@ class TuitionPaymentRequest {
     final Map<String, dynamic> json = {
       'registration_id': registrationId,
       'paid_amount': paidAmount,
-      'payment_method': paymentMethod,
+      'payment_method': apiPaymentMethod(paymentMethod),
     };
     if (payDate != null) json['pay_date'] = payDate;
     return json;

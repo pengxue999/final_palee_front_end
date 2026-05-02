@@ -140,7 +140,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
     final columns = [
       DataColumnDef<Level>(
         key: 'levelId',
-        label: 'ລະຫັດຊັ້ນ',
+        label: 'ລະຫັດ',
         flex: 2,
         render: (v, row) => Text(
           v.toString(),
@@ -191,7 +191,7 @@ class _LevelScreenState extends ConsumerState<LevelScreen> {
                   onEdit: _openEdit,
                   onDelete: _confirmDelete,
                   searchKeys: const ['levelId', 'levelName'],
-                  addLabel: 'ເພີ່ມຊັ້ນ/ລະະດັບ',
+                  addLabel: 'ເພີ່ມຊັ້ນຮຽນ/ລະດັບ',
                   isLoading: isLoading,
                 ),
               ),

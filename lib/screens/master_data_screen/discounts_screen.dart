@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/enum_localization.dart';
 import '../../models/discount_model.dart';
 import '../../providers/discount_provider.dart';
 import '../../providers/academic_year_provider.dart';
@@ -11,7 +12,7 @@ import '../../widgets/app_text_field.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_dropdown.dart';
 
-const _descriptionOptions = ['ຮຽນ3ວິຊາຂື້ນໄປ', 'ລົງທະບຽນຮຽນຊ້າ'];
+const _discountDescriptionLabels = ['ຮຽນ 3 ວິຊາຂຶ້ນໄປ', 'ລົງທະບຽນຮຽນຊ້າ'];
 
 class DiscountsScreen extends ConsumerStatefulWidget {
   const DiscountsScreen({super.key});
@@ -64,7 +65,7 @@ class _DiscountsScreenState extends ConsumerState<DiscountsScreen> {
   void _openEdit(DiscountModel item) {
     _amountController.text = item.discountAmount.toStringAsFixed(0);
     _selectedDescription =
-        _descriptionOptions.contains(item.discountDescription)
+        _discountDescriptionLabels.contains(item.discountDescription)
         ? item.discountDescription
         : null;
     final academicYears = ref.read(academicYearProvider).academicYears;
@@ -210,7 +211,7 @@ class _DiscountsScreenState extends ConsumerState<DiscountsScreen> {
       5,
       (index) => DiscountModel(
         discountId: (1000 + index + 1).toString(),
-        discountDescription: 'ສ່ວນຫຼຸດ ${index + 1}',
+        discountDescription: localizeDiscountDescription('MULTI_SUBJECT'),
         discountAmount: 10.0 + index * 5,
         academicYear: '2024-2025',
       ),
@@ -281,7 +282,7 @@ class _DiscountsScreenState extends ConsumerState<DiscountsScreen> {
                 value: _selectedDescription,
                 required: true,
                 hint: 'ເລືອກເງື່ອນໄຂ',
-                items: _descriptionOptions
+                items: _discountDescriptionLabels
                     .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                     .toList(),
                 onChanged: (v) => setState(() => _selectedDescription = v),

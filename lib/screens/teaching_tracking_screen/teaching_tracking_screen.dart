@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/enum_localization.dart';
 import '../../models/teacher_assignment_model.dart';
 import '../../models/teacher_model.dart';
 import '../../models/teaching_log_model.dart';
@@ -111,7 +112,7 @@ class _TeachingTrackingScreenState
   Future<void> _init() async {
     await ref.read(academicYearProvider.notifier).getAcademicYears();
     final auth = ref.read(authProvider);
-    if (auth.role == 'teacher') {
+    if (isTeacherRole(auth.role)) {
       await _loadTeacherData(auth.teacherId!);
     } else {
       await _loadAdminData();
@@ -364,7 +365,7 @@ class _TeachingTrackingScreenState
       }
       final auth = ref.read(authProvider);
       final wasEditing = _editingLog != null;
-      if (auth.role == 'teacher') {
+      if (isTeacherRole(auth.role)) {
         _resetForm();
         await _loadTeacherData(auth.teacherId!);
       } else {
@@ -418,7 +419,7 @@ class _TeachingTrackingScreenState
       await _logService.deleteLog(log.teachingLogId);
       if (_editingLog?.teachingLogId == log.teachingLogId) _resetForm();
       final auth = ref.read(authProvider);
-      if (auth.role == 'teacher') {
+      if (isTeacherRole(auth.role)) {
         await _loadTeacherData(auth.teacherId!);
       } else if (_selectedTeacherId != null) {
         await _loadAssignmentsAndLogs(_selectedTeacherId!);
@@ -444,7 +445,7 @@ class _TeachingTrackingScreenState
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final isTeacher = auth.role == 'teacher';
+    final isTeacher = isTeacherRole(auth.role);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,

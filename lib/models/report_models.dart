@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class StudentReportItem {
   final String studentId;
   final String studentName;
@@ -31,13 +33,15 @@ class StudentReportItem {
       studentName: json['student_name'] as String,
       studentLastname: json['student_lastname'] as String,
       fullName: json['full_name'] as String,
-      gender: json['gender'] as String,
+      gender: localizeGender(json['gender'] as String?),
       studentContact: json['student_contact'] as String,
       parentsContact: json['parents_contact'] as String,
       school: json['school'] as String,
       districtName: json['district_name'] as String?,
       provinceName: json['province_name'] as String?,
-      scholarshipStatus: json['scholarship_status'] as String?,
+      scholarshipStatus: localizeScholarship(
+        json['scholarship_status'] as String?,
+      ),
     );
   }
 
@@ -100,8 +104,8 @@ class ReportFilters {
       provinceName: json['province_name'] as String?,
       districtId: json['district_id'] as int?,
       districtName: json['district_name'] as String?,
-      scholarship: json['scholarship'] as String?,
-      gender: json['gender'] as String?,
+      scholarship: localizeScholarship(json['scholarship'] as String?),
+      gender: localizeGender(json['gender'] as String?),
     );
   }
 }
@@ -229,8 +233,12 @@ class StudentSummaryData {
   factory StudentSummaryData.fromJson(Map<String, dynamic> json) {
     return StudentSummaryData(
       totalStudents: json['total_students'] as int,
-      byGender: Map<String, int>.from(json['by_gender'] as Map),
-      byScholarship: Map<String, int>.from(json['by_scholarship'] as Map),
+      byGender: localizeGenderStats(
+        Map<String, int>.from(json['by_gender'] as Map),
+      ),
+      byScholarship: localizeScholarshipStats(
+        Map<String, int>.from(json['by_scholarship'] as Map),
+      ),
       byProvince: Map<String, int>.from(json['by_province'] as Map),
       byDistrict: Map<String, int>.from(json['by_district'] as Map),
     );

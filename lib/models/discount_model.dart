@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class DiscountModel {
   final String discountId;
   final double discountAmount;
@@ -16,7 +18,9 @@ class DiscountModel {
       discountId: json['discount_id'] as String? ?? '',
       discountAmount:
           double.tryParse(json['discount_amount']?.toString() ?? '0') ?? 0,
-      discountDescription: json['discount_description'] as String? ?? '',
+      discountDescription: localizeDiscountDescription(
+        json['discount_description'] as String?,
+      ),
       academicYear: json['academic_year']?.toString() ?? '',
     );
   }
@@ -51,7 +55,7 @@ class DiscountRequest {
   Map<String, dynamic> toJson() => {
     'academic_id': academicId,
     'discount_amount': discountAmount,
-    'discount_description': discountDescription,
+    'discount_description': apiDiscountDescription(discountDescription),
   };
 }
 

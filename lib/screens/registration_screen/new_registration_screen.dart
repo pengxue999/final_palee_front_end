@@ -27,6 +27,7 @@ import '../../providers/academic_year_provider.dart';
 import '../../providers/fee_provider.dart';
 import '../../providers/student_provider.dart';
 import '../../providers/registration_provider.dart';
+import '../../core/utils/enum_localization.dart';
 import '../../widgets/print_preparation_overlay.dart';
 import '../../widgets/success_overlay.dart';
 
@@ -88,8 +89,6 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   String? _selectedDiscountId;
   Map<String, String> _scholarshipStatusByFee = {};
   bool _autoRenew = false;
-
-  static const _activeAcademicStatusLabels = {'ດໍາເນີນການ', 'ACTIVE'};
 
   List<FeeModel> get _fees {
     final activeAcademicYear = _currentAcademicYear;
@@ -225,7 +224,7 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   AcademicYearModel? get _activeAcademicYear {
     final academicYears = ref.read(academicYearProvider).academicYears;
     for (final academicYear in academicYears) {
-      if (_activeAcademicStatusLabels.contains(academicYear.academicStatus)) {
+      if (isActiveAcademicStatus(academicYear.academicStatus)) {
         return academicYear;
       }
     }
@@ -298,18 +297,13 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
       discountId: _selectedDiscountId,
       totalAmount: _totalFee.toDouble(),
       finalAmount: _netFee.toDouble(),
-      status: 'ຍັງບໍ່ທັນຈ່າຍ',
+      status: 'UNPAID',
       registrationDate: DateTime.now(),
     );
 
     final details = _selectedFeeIds.map((feeId) {
       final scholarship = _scholarshipStatusByFee[feeId] ?? 'ບໍ່ໄດ້ຮັບທຶນ';
-      return {
-        'fee_id': feeId,
-        'scholarship': scholarship == 'ໄດ້ຮັບທຶນ'
-            ? 'ໄດ້ຮັບທຶນ'
-            : 'ບໍ່ໄດ້ຮັບທຶນ',
-      };
+      return {'fee_id': feeId, 'scholarship': apiScholarship(scholarship)};
     }).toList();
 
     final success = await ref

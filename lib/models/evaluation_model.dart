@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class EvaluationScoreEntryStudent {
   final int regisDetailId;
   final String registrationId;
@@ -139,7 +141,7 @@ class EvaluationScoreSheet {
     return EvaluationScoreSheet(
       academicId: json['academic_id'] as String?,
       academicYear: json['academic_year'] as String?,
-      semester: json['semester'] as String? ?? '',
+      semester: localizeSemester(json['semester'] as String?),
       levelId: json['level_id'] as String? ?? '',
       levelName: json['level_name'] as String? ?? '',
       subjectDetailId: json['subject_detail_id'] as String? ?? '',
@@ -193,7 +195,7 @@ class EvaluationScoreSheetRequest {
   });
 
   Map<String, dynamic> toJson() => {
-    'semester': semester,
+    'semester': apiSemester(semester),
     'level_id': levelId,
     'subject_detail_id': subjectDetailId,
     'scores': scores.map((item) => item.toJson()).toList(),
@@ -369,8 +371,8 @@ class AssessmentReportItem {
       regisDetailId: _toInt(json['regis_detail_id']) ?? 0,
       academicId: json['academic_id'] as String? ?? '',
       academicYear: json['academic_year'] as String?,
-      semester: json['semester'] as String? ?? '',
-      evaluationType: json['evaluation_type'] as String? ?? '',
+      semester: localizeSemester(json['semester'] as String?),
+      evaluationType: localizeSemester(json['evaluation_type'] as String?),
       subjectId: json['subject_id'] as String? ?? '',
       subjectDetailId: json['subject_detail_id'] as String? ?? '',
       levelId: json['level_id'] as String? ?? '',

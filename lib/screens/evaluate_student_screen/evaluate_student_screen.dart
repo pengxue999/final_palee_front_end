@@ -24,8 +24,8 @@ class EvaluateStudentScreen extends ConsumerStatefulWidget {
 class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
   static const _semesters = [
     {'value': 'all', 'label': 'ທັງໝົດ'},
-    {'value': 'Semester 1', 'label': 'ກາງພາກ'},
-    {'value': 'Semester 2', 'label': 'ທ້າຍພາກ'},
+    {'value': 'MIDTERM', 'label': 'ກາງພາກ'},
+    {'value': 'FINAL', 'label': 'ທ້າຍພາກ'},
   ];
 
   final Map<String, TextEditingController> _scoreControllers = {};
@@ -56,10 +56,10 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
 
   String _semesterLabel(String? value) {
     switch (value) {
-      case 'Semester 1':
+      case 'MIDTERM':
       case 'ກາງພາກ':
         return 'ກາງພາກ';
-      case 'Semester 2':
+      case 'FINAL':
       case 'ທ້າຍພາກ':
         return 'ທ້າຍພາກ';
       case 'all':
@@ -72,9 +72,9 @@ class _EvaluateStudentScreenState extends ConsumerState<EvaluateStudentScreen> {
   String _toReportSemester(String? value) {
     switch (value) {
       case 'ກາງພາກ':
-        return 'Semester 1';
+        return 'MIDTERM';
       case 'ທ້າຍພາກ':
-        return 'Semester 2';
+        return 'FINAL';
       default:
         return value ?? 'all';
     }
@@ -581,9 +581,9 @@ class _EvaluationScoreEntryDialogState
 
   String? _normalizeEntrySemester(String? value) {
     switch (value) {
-      case 'Semester 1':
+      case 'MIDTERM':
         return 'ກາງພາກ';
-      case 'Semester 2':
+      case 'FINAL':
         return 'ທ້າຍພາກ';
       default:
         return value;
@@ -632,10 +632,10 @@ class _EvaluationScoreEntryDialogState
 
   String _semesterLabel(String? value) {
     switch (value) {
-      case 'Semester 1':
+      case 'MIDTERM':
       case 'ກາງພາກ':
         return 'ກາງພາກ';
-      case 'Semester 2':
+      case 'FINAL':
       case 'ທ້າຍພາກ':
         return 'ທ້າຍພາກ';
       default:

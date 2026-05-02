@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/enum_localization.dart';
 import '../../models/user_model.dart';
 import '../../providers/user_provider.dart';
 import '../../widgets/app_alerts.dart';
@@ -28,11 +29,11 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   final _passwordController = TextEditingController();
   final _usernameFocusNode = FocusNode();
   final _passwordFocusNode = FocusNode();
-  String _selectedRole = 'admin';
+  String _selectedRole = 'DIRECTOR';
 
   static const List<Map<String, String>> _roles = [
-    {'value': 'admin', 'label': 'ແອັດມິນ'},
-    {'value': 'teacher', 'label': 'ອາຈານ'},
+    {'value': 'DIRECTOR', 'label': 'ຜູ້ອຳນວຍການ'},
+    {'value': 'TEACHER', 'label': 'ອາຈານ'},
   ];
 
   @override
@@ -52,7 +53,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   void _resetForm() {
     _usernameController.clear();
     _passwordController.clear();
-    _selectedRole = 'admin';
+    _selectedRole = 'DIRECTOR';
     _showPassword = false;
     selectedItem = null;
     isEditing = false;
@@ -69,7 +70,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   void _openEdit(UserModel item) {
     _usernameController.text = item.userName;
     _passwordController.clear();
-    _selectedRole = item.role;
+    _selectedRole = apiUserRole(item.role);
     setState(() {
       selectedItem = item;
       showAddEditModal = true;
@@ -146,18 +147,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
   }
 
   String _roleLabel(String role) {
-    return _roles.firstWhere(
-          (r) => r['value'] == role,
-          orElse: () => {'value': role, 'label': role},
-        )['label'] ??
-        role;
+    return localizeUserRole(role);
   }
 
   Color _roleColor(String role) {
-    switch (role) {
-      case 'admin':
+    switch (apiUserRole(role)) {
+      case 'DIRECTOR':
         return AppColors.destructive;
-      case 'teacher':
+      case 'TEACHER':
         return AppColors.primary;
       default:
         return AppColors.mutedForeground;

@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class SalaryPaymentModel {
   final String salaryPaymentId;
   final String teacherId;
@@ -37,7 +39,7 @@ class SalaryPaymentModel {
       totalAmount:
           double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0,
       paymentDate: json['payment_date'] as String,
-      status: json['status'] as String,
+      status: localizeRegistrationStatus(json['status'] as String?),
     );
   }
 
@@ -97,7 +99,7 @@ class SalaryPaymentRequest {
     'month': month,
     'total_amount': totalAmount,
     'payment_date': paymentDate,
-    'status': status,
+    'status': apiRegistrationStatus(status),
   };
 }
 

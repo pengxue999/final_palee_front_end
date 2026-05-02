@@ -143,41 +143,9 @@ class _ProvincesScreenState extends ConsumerState<ProvincesScreen> {
 
     final columns = [
       DataColumnDef<ProvinceModel>(
-        key: 'provinceId',
-        label: 'ລະຫັດແຂວງ',
-        flex: 2,
-        render: (value, row) => Text(
-          value.toString(),
-          style: const TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: AppColors.primary,
-          ),
-        ),
-      ),
-      DataColumnDef<ProvinceModel>(
         key: 'provinceName',
         label: 'ຊື່ແຂວງ',
         flex: 4,
-        render: (value, row) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF10B981), Color(0xFF059669)],
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            value.toString(),
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              color: Colors.white,
-            ),
-          ),
-        ),
       ),
     ];
 

@@ -2,8 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/teacher_assignment_model.dart';
 import '../services/teacher_assignment_service.dart';
 
-final teacherAssignmentServiceProvider =
-    Provider<TeacherAssignmentService>((_) => TeacherAssignmentService());
+final teacherAssignmentServiceProvider = Provider<TeacherAssignmentService>(
+  (_) => TeacherAssignmentService(),
+);
 
 class TeacherAssignmentState {
   final List<TeacherAssignmentModel> assignments;
@@ -29,12 +30,11 @@ class TeacherAssignmentState {
   }
 }
 
-class TeacherAssignmentNotifier
-    extends StateNotifier<TeacherAssignmentState> {
+class TeacherAssignmentNotifier extends StateNotifier<TeacherAssignmentState> {
   final TeacherAssignmentService _service;
 
   TeacherAssignmentNotifier(this._service)
-      : super(const TeacherAssignmentState());
+    : super(const TeacherAssignmentState());
 
   Future<void> getAssignments() async {
     state = state.copyWith(isLoading: true, error: null);
@@ -58,8 +58,24 @@ class TeacherAssignmentNotifier
     }
   }
 
+  Future<bool> createAssignmentsBatch(
+    TeacherAssignmentBatchRequest request,
+  ) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _service.createAssignmentsBatch(request);
+      await getAssignments();
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString(), isLoading: false);
+      return false;
+    }
+  }
+
   Future<bool> updateAssignment(
-      String assignmentId, TeacherAssignmentRequest request) async {
+    String assignmentId,
+    TeacherAssignmentRequest request,
+  ) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       await _service.updateAssignment(assignmentId, request);
@@ -91,8 +107,8 @@ class TeacherAssignmentNotifier
   void clearError() => state = state.copyWith(error: null);
 }
 
-final teacherAssignmentProvider = StateNotifierProvider<
-    TeacherAssignmentNotifier, TeacherAssignmentState>(
-  (ref) =>
-      TeacherAssignmentNotifier(ref.read(teacherAssignmentServiceProvider)),
-);
+final teacherAssignmentProvider =
+    StateNotifierProvider<TeacherAssignmentNotifier, TeacherAssignmentState>(
+      (ref) =>
+          TeacherAssignmentNotifier(ref.read(teacherAssignmentServiceProvider)),
+    );

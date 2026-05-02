@@ -56,9 +56,7 @@ class _ReportPopularSubjectScreenState
   void _setDefaultAcademicYear() {
     final academicYears = ref.read(academicYearProvider).academicYears;
     final activeYear = academicYears.firstWhere(
-      (y) =>
-          y.academicStatus == 'ກຳລັງດໍາເນີນ' ||
-          y.academicStatus == 'ດໍາເນີນການ',
+      (y) => y.academicStatus == 'ດໍາເນີນການ',
       orElse: () => academicYears.isNotEmpty
           ? academicYears.first
           : const AcademicYearModel(

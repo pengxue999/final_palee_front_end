@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:window_manager/window_manager.dart';
+import '../core/utils/enum_localization.dart';
 import '../providers/auth_provider.dart';
 import '../core/utils/responsive_utils.dart';
 
@@ -71,7 +72,7 @@ class _SidebarState extends ConsumerState<Sidebar> {
         ),
         MenuItemModel(
           id: '_g1_users',
-          label: 'ຂໍ້ມູນຜູ້ໃຊ້ລະບົບ',
+          label: 'ຂໍ້ມູນຜູ້ໃຊ້',
           icon: Icons.admin_panel_settings_rounded,
           path: '/users',
           tableName: 'user',
@@ -110,20 +111,7 @@ class _SidebarState extends ConsumerState<Sidebar> {
           path: '/levels',
           tableName: 'level',
         ),
-        MenuItemModel(
-          id: 'provinces',
-          label: 'ຂໍ້ມູນແຂວງ',
-          icon: Icons.map_rounded,
-          path: '/provinces',
-          tableName: 'province',
-        ),
-        MenuItemModel(
-          id: 'districts',
-          label: 'ຂໍ້ມູນເມືອງ',
-          icon: Icons.location_city_rounded,
-          path: '/districts',
-          tableName: 'district',
-        ),
+
         MenuItemModel(
           id: 'subject-details',
           label: 'ຂໍ້ມູນລາຍລະອຽດວິຊາ',
@@ -164,6 +152,26 @@ class _SidebarState extends ConsumerState<Sidebar> {
           icon: Icons.straighten_rounded,
           path: '/donation-categories',
           tableName: 'donation_category',
+        ),
+        MenuItemModel(
+          id: '_divider2',
+          label: '__divider__',
+          icon: Icons.remove,
+          path: null,
+        ),
+        MenuItemModel(
+          id: 'provinces',
+          label: 'ຂໍ້ມູນແຂວງ',
+          icon: Icons.map_rounded,
+          path: '/provinces',
+          tableName: 'province',
+        ),
+        MenuItemModel(
+          id: 'districts',
+          label: 'ຂໍ້ມູນເມືອງ',
+          icon: Icons.location_city_rounded,
+          path: '/districts',
+          tableName: 'district',
         ),
       ],
     ),
@@ -351,7 +359,7 @@ class _SidebarState extends ConsumerState<Sidebar> {
   };
 
   List<MenuItemModel> _getFilteredMenuItems(String? role) {
-    if (role?.toLowerCase() != 'teacher') {
+    if (!isTeacherRole(role)) {
       return menuItems;
     }
     return menuItems

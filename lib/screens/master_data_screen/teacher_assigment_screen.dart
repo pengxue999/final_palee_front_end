@@ -37,6 +37,9 @@ class _TeacherAssigmentScreenState
   String? _selectedSubjectDetailId;
   String? _selectedAcademicId;
   String? _selectedSubjectFilter;
+  final Set<String> _selectedSubjectDetailIds = <String>{};
+  final Map<String, TextEditingController> _subjectRateControllers =
+      <String, TextEditingController>{};
 
   @override
   void initState() {
@@ -61,6 +64,11 @@ class _TeacherAssigmentScreenState
     _selectedSubjectDetailId = null;
     _selectedAcademicId = null;
     _selectedSubjectFilter = null;
+    for (final controller in _subjectRateControllers.values) {
+      controller.dispose();
+    }
+    _subjectRateControllers.clear();
+    _selectedSubjectDetailIds.clear();
     selectedItem = null;
     isEditing = false;
   }
@@ -74,33 +82,18 @@ class _TeacherAssigmentScreenState
   }
 
   void _openEdit(TeacherAssignmentModel item) {
+    _resetForm();
     _hourlyRateController.text = item.hourlyRate.toStringAsFixed(0);
 
-    final teachers = ref.read(teacherProvider).teachers;
-    final teacher = teachers
-        .where(
-          (t) =>
-              t.teacherName == item.teacherName &&
-              t.teacherLastname == item.teacherLastname,
-        )
-        .firstOrNull;
-    _selectedTeacherId = teacher?.teacherId;
-
     final subjectDetails = ref.read(subjectDetailProvider).subjectDetails;
-    final sd = subjectDetails
-        .where(
-          (s) =>
-              s.subjectName == item.subjectName &&
-              s.levelName == item.levelName,
-        )
+    final selectedSubject = subjectDetails
+        .where((sd) => sd.subjectDetailId == item.subjectDetailId)
         .firstOrNull;
-    _selectedSubjectDetailId = sd?.subjectDetailId;
 
-    final academicYears = ref.read(academicYearProvider).academicYears;
-    final ay = academicYears
-        .where((a) => a.academicYear == item.academicYear)
-        .firstOrNull;
-    _selectedAcademicId = ay?.academicId;
+    _selectedTeacherId = item.teacherId;
+    _selectedSubjectDetailId = item.subjectDetailId;
+    _selectedAcademicId = item.academicId;
+    _selectedSubjectFilter = selectedSubject?.subjectName;
 
     setState(() {
       selectedItem = item;
@@ -109,33 +102,143 @@ class _TeacherAssigmentScreenState
     });
   }
 
-  Future<void> _save() async {
-    if (_selectedTeacherId == null ||
-        _selectedSubjectDetailId == null ||
-        _selectedAcademicId == null ||
-        _hourlyRateController.text.isEmpty) {
+  TextEditingController _getSubjectRateController(
+    String subjectDetailId, {
+    String initialValue = '',
+  }) {
+    return _subjectRateControllers.putIfAbsent(
+      subjectDetailId,
+      () => TextEditingController(text: initialValue),
+    );
+  }
+
+  void _toggleSubjectSelection(SubjectDetailModel subjectDetail) {
+    if (isEditing) {
+      setState(() {
+        _selectedSubjectDetailId = subjectDetail.subjectDetailId;
+      });
       return;
     }
 
-    final hourlyRate =
-        double.tryParse(_hourlyRateController.text.replaceAll(',', '')) ?? 0;
+    final subjectDetailId = subjectDetail.subjectDetailId;
+    setState(() {
+      if (_selectedSubjectDetailIds.contains(subjectDetailId)) {
+        _selectedSubjectDetailIds.remove(subjectDetailId);
+        _subjectRateControllers.remove(subjectDetailId)?.dispose();
+      } else {
+        _selectedSubjectDetailIds.add(subjectDetailId);
+        _getSubjectRateController(subjectDetailId);
+      }
+    });
+  }
 
-    final request = TeacherAssignmentRequest(
-      teacherId: _selectedTeacherId!,
-      subjectDetailId: _selectedSubjectDetailId!,
-      academicId: _selectedAcademicId!,
-      hourlyRate: hourlyRate,
+  double _parseHourlyRate(String value) {
+    return double.tryParse(value.replaceAll(',', '')) ?? 0;
+  }
+
+  List<TeacherAssignmentModel> _findDuplicateAssignments(
+    List<TeacherAssignmentModel> assignments,
+  ) {
+    if (_selectedTeacherId == null || _selectedAcademicId == null) {
+      return const [];
+    }
+
+    final selectedIds = isEditing
+        ? (_selectedSubjectDetailId == null
+              ? <String>{}
+              : {_selectedSubjectDetailId!})
+        : _selectedSubjectDetailIds;
+
+    if (selectedIds.isEmpty) {
+      return const [];
+    }
+
+    final duplicates = <TeacherAssignmentModel>[];
+    for (final assignment in assignments) {
+      final isSameCombination =
+          assignment.teacherId == _selectedTeacherId &&
+          selectedIds.contains(assignment.subjectDetailId) &&
+          assignment.academicId == _selectedAcademicId;
+      final isCurrentItem =
+          assignment.assignmentId == selectedItem?.assignmentId;
+
+      if (isSameCombination && !isCurrentItem) {
+        duplicates.add(assignment);
+      }
+    }
+
+    return duplicates;
+  }
+
+  String? _duplicateAssignmentMessage(
+    List<TeacherAssignmentModel> assignments,
+  ) {
+    final duplicates = _findDuplicateAssignments(assignments);
+    if (duplicates.isEmpty) {
+      return null;
+    }
+
+    if (duplicates.length == 1) {
+      final duplicate = duplicates.first;
+      return 'ອາຈານ ${duplicate.teacherFullName} ຖືກມອບໝາຍ ${duplicate.subjectLabel} ໃນສົກຮຽນ ${duplicate.academicYear} ແລ້ວ';
+    }
+
+    final labels = duplicates.map((item) => item.subjectLabel).join(', ');
+    return 'ມີບາງລາຍການຖືກມອບໝາຍແລ້ວ: $labels';
+  }
+
+  Future<void> _save() async {
+    if (_selectedTeacherId == null || _selectedAcademicId == null) {
+      return;
+    }
+
+    final duplicateMessage = _duplicateAssignmentMessage(
+      ref.read(teacherAssignmentProvider).assignments,
     );
+    if (duplicateMessage != null) {
+      AppAlert.warning(context, duplicateMessage);
+      return;
+    }
 
     bool success;
     if (isEditing && selectedItem != null) {
+      if (_selectedSubjectDetailId == null ||
+          _hourlyRateController.text.isEmpty) {
+        return;
+      }
+
+      final request = TeacherAssignmentRequest(
+        teacherId: _selectedTeacherId!,
+        subjectDetailId: _selectedSubjectDetailId!,
+        academicId: _selectedAcademicId!,
+        hourlyRate: _parseHourlyRate(_hourlyRateController.text),
+      );
+
       success = await ref
           .read(teacherAssignmentProvider.notifier)
           .updateAssignment(selectedItem!.assignmentId, request);
     } else {
+      if (_selectedSubjectDetailIds.isEmpty) {
+        return;
+      }
+
+      final batchItems = _selectedSubjectDetailIds.map((subjectDetailId) {
+        final controller = _subjectRateControllers[subjectDetailId];
+        return TeacherAssignmentBatchItemRequest(
+          subjectDetailId: subjectDetailId,
+          hourlyRate: _parseHourlyRate(controller?.text ?? ''),
+        );
+      }).toList();
+
+      final request = TeacherAssignmentBatchRequest(
+        teacherId: _selectedTeacherId!,
+        academicId: _selectedAcademicId!,
+        assignments: batchItems,
+      );
+
       success = await ref
           .read(teacherAssignmentProvider.notifier)
-          .createAssignment(request);
+          .createAssignmentsBatch(request);
     }
 
     if (success && mounted) {
@@ -184,6 +287,9 @@ class _TeacherAssigmentScreenState
 
   @override
   void dispose() {
+    for (final controller in _subjectRateControllers.values) {
+      controller.dispose();
+    }
     _hourlyRateController.dispose();
     super.dispose();
   }
@@ -282,6 +388,8 @@ class _TeacherAssigmentScreenState
       (index) => TeacherAssignmentModel(
         assignmentId: 'TA00${index + 1}',
         teacherId: 'TC${index + 1}',
+        subjectDetailId: 'SD${index + 1}',
+        academicId: 'AY001',
         teacherName: 'ອາຈານ ${index + 1}',
         teacherLastname: 'ທ້າວ',
         subjectName: 'ວິຊາ ${index + 1}',
@@ -293,10 +401,37 @@ class _TeacherAssigmentScreenState
   }
 
   bool get _isFormValid {
-    return _selectedTeacherId != null &&
-        _selectedSubjectDetailId != null &&
-        _selectedAcademicId != null &&
-        _hourlyRateController.text.isNotEmpty;
+    if (_selectedTeacherId == null || _selectedAcademicId == null) {
+      return false;
+    }
+
+    if (isEditing) {
+      return _selectedSubjectDetailId != null &&
+          _hourlyRateController.text.isNotEmpty &&
+          _parseHourlyRate(_hourlyRateController.text) > 0;
+    }
+
+    if (_selectedSubjectDetailIds.isEmpty) {
+      return false;
+    }
+
+    for (final subjectDetailId in _selectedSubjectDetailIds) {
+      final controller = _subjectRateControllers[subjectDetailId];
+      final rate = _parseHourlyRate(controller?.text ?? '');
+      if (controller == null || controller.text.isEmpty || rate <= 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  List<SubjectDetailModel> _selectedSubjectDetails(
+    List<SubjectDetailModel> subjectDetails,
+  ) {
+    return subjectDetails
+        .where((sd) => _selectedSubjectDetailIds.contains(sd.subjectDetailId))
+        .toList();
   }
 
   Widget _buildSubjectGrid(List<SubjectDetailModel> subjectDetails) {
@@ -461,17 +596,17 @@ class _TeacherAssigmentScreenState
                               itemCount: filteredDetails.length,
                               itemBuilder: (context, index) {
                                 final sd = filteredDetails[index];
-                                final isSelected =
-                                    sd.subjectDetailId ==
-                                    _selectedSubjectDetailId;
+                                final isSelected = isEditing
+                                    ? sd.subjectDetailId ==
+                                          _selectedSubjectDetailId
+                                    : _selectedSubjectDetailIds.contains(
+                                        sd.subjectDetailId,
+                                      );
 
                                 return Material(
                                   color: Colors.transparent,
                                   child: InkWell(
-                                    onTap: () => setState(
-                                      () => _selectedSubjectDetailId =
-                                          sd.subjectDetailId,
-                                    ),
+                                    onTap: () => _toggleSubjectSelection(sd),
                                     borderRadius: BorderRadius.circular(18),
                                     child: AnimatedContainer(
                                       duration: const Duration(
@@ -614,7 +749,9 @@ class _TeacherAssigmentScreenState
                                           Text(
                                             isSelected
                                                 ? 'ກຳລັງເລືອກຢູ່'
-                                                : 'ກົດເພື່ອເລືອກວິຊານີ້',
+                                                : isEditing
+                                                ? 'ກົດເພື່ອປ່ຽນວິຊານີ້'
+                                                : 'ກົດເພື່ອເລືອກຫຼາຍລາຍການ',
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w500,
@@ -639,6 +776,118 @@ class _TeacherAssigmentScreenState
           ],
         );
       },
+    );
+  }
+
+  Widget _buildBatchRateEditor(List<SubjectDetailModel> subjectDetails) {
+    final selectedDetails = _selectedSubjectDetails(subjectDetails);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'ກຳນົດອັດຕາຄ່າສອນແຍກຕາມວິຊາ',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: AppColors.foreground,
+            fontFamily: 'NotoSansLao',
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (selectedDetails.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Text(
+              'ເລືອກວິຊາ/ລະດັບຢ່າງນ້ອຍ 1 ລາຍການ ເພື່ອກຳນົດອັດຕາຄ່າສອນ',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.mutedForeground,
+                fontFamily: 'NotoSansLao',
+              ),
+            ),
+          )
+        else
+          Column(
+            children: selectedDetails.map((sd) {
+              final controller = _getSubjectRateController(sd.subjectDetailId);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            sd.subjectName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.foreground,
+                              fontFamily: 'NotoSansLao',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            sd.levelName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.mutedForeground,
+                              fontFamily: 'NotoSansLao',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 4,
+                      child: AppTextField(
+                        label: 'ອັດຕາ/ຊົ່ວໂມງ',
+                        hint: 'ເຊັ່ນ: 50,000',
+                        controller: controller,
+                        keyboardType: TextInputType.number,
+                        digitOnly: DigitOnly.integer,
+                        thousandsSeparator: true,
+                        required: true,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      tooltip: 'ຍົກເລີກລາຍການນີ້',
+                      onPressed: () => setState(() {
+                        _selectedSubjectDetailIds.remove(sd.subjectDetailId);
+                        _subjectRateControllers
+                            .remove(sd.subjectDetailId)
+                            ?.dispose();
+                      }),
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: AppColors.destructive,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+      ],
     );
   }
 
@@ -738,6 +987,9 @@ class _TeacherAssigmentScreenState
     final teachers = ref.watch(teacherProvider).teachers;
     final subjectDetails = ref.watch(subjectDetailProvider).subjectDetails;
     final academicYears = ref.watch(academicYearProvider).academicYears;
+    final duplicateMessage = _duplicateAssignmentMessage(
+      assignmentState.assignments,
+    );
 
     return Material(
       color: Colors.black54,
@@ -765,7 +1017,10 @@ class _TeacherAssigmentScreenState
                 label: isEditing ? 'ຢືນຢັນ' : 'ບັນທຶກ',
                 icon: Icons.save_rounded,
                 isLoading: assignmentState.isLoading,
-                onPressed: (assignmentState.isLoading || !_isFormValid)
+                onPressed:
+                    (assignmentState.isLoading ||
+                        !_isFormValid ||
+                        duplicateMessage != null)
                     ? null
                     : _save,
               ),
@@ -795,48 +1050,77 @@ class _TeacherAssigmentScreenState
                 const SizedBox(height: 16),
                 _buildSubjectGrid(subjectDetails),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppDropdown<String>(
-                        label: 'ສົກຮຽນ',
-                        hint: 'ເລືອກສົກຮຽນ',
-                        value:
-                            academicYears.any(
-                              (a) => a.academicId == _selectedAcademicId,
-                            )
-                            ? _selectedAcademicId
-                            : null,
-                        required: true,
-                        items: academicYears
-                            .map(
-                              (a) => DropdownMenuItem(
-                                value: a.academicId,
-                                child: Text(a.academicYear),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) =>
-                            setState(() => _selectedAcademicId = v),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: AppTextField(
-                        label: 'ອັດຕາຄ່າສອນຕໍ່ຊົ່ວໂມງ',
-                        hint: 'ເຊັ່ນ: 50,000',
-                        controller: _hourlyRateController,
-                        keyboardType: TextInputType.number,
-                        digitOnly: DigitOnly.integer,
-                        thousandsSeparator: true,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        required: true,
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ),
-                  ],
+                AppDropdown<String>(
+                  label: 'ສົກຮຽນ',
+                  hint: 'ເລືອກສົກຮຽນ',
+                  value:
+                      academicYears.any(
+                        (a) => a.academicId == _selectedAcademicId,
+                      )
+                      ? _selectedAcademicId
+                      : null,
+                  required: true,
+                  items: academicYears
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: a.academicId,
+                          child: Text(a.academicYear),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (v) => setState(() => _selectedAcademicId = v),
                 ),
+                const SizedBox(height: 16),
+                if (isEditing)
+                  AppTextField(
+                    label: 'ອັດຕາຄ່າສອນຕໍ່ຊົ່ວໂມງ',
+                    hint: 'ເຊັ່ນ: 50,000',
+                    controller: _hourlyRateController,
+                    keyboardType: TextInputType.number,
+                    digitOnly: DigitOnly.integer,
+                    thousandsSeparator: true,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    required: true,
+                    onChanged: (_) => setState(() {}),
+                  )
+                else
+                  _buildBatchRateEditor(subjectDetails),
+                if (duplicateMessage != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.warningLight,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: AppColors.warning.withOpacity(0.25),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: AppColors.warning,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            duplicateMessage,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.foreground,
+                              fontFamily: 'NotoSansLao',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

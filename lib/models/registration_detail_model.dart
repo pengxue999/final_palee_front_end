@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class RegistrationDetailModel {
   final int regisDetailId;
   final String registrationId;
@@ -16,7 +18,7 @@ class RegistrationDetailModel {
       regisDetailId: json['regis_detail_id'] as int? ?? 0,
       registrationId: json['registration_id'] as String? ?? '',
       feeId: json['fee_id'] as String? ?? '',
-      scholarship: json['scholarship'] as String? ?? '',
+      scholarship: localizeScholarship(json['scholarship'] as String?),
     );
   }
 
@@ -24,7 +26,7 @@ class RegistrationDetailModel {
     'regis_detail_id': regisDetailId,
     'registration_id': registrationId,
     'fee_id': feeId,
-    'scholarship': scholarship,
+    'scholarship': apiScholarship(scholarship),
   };
 }
 
@@ -42,7 +44,7 @@ class RegistrationDetailCreateRequest {
   Map<String, dynamic> toJson() => {
     'registration_id': registrationId,
     'fee_id': feeId,
-    'scholarship': scholarship,
+    'scholarship': apiScholarship(scholarship),
   };
 }
 
@@ -61,7 +63,9 @@ class RegistrationDetailResponse {
     return RegistrationDetailResponse(
       code: json['code'] as String? ?? '',
       messages: json['messages'] as String? ?? '',
-      data: RegistrationDetailModel.fromJson(json['data'] as Map<String, dynamic>),
+      data: RegistrationDetailModel.fromJson(
+        json['data'] as Map<String, dynamic>,
+      ),
     );
   }
 }

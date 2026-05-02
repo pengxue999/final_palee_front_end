@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/enum_localization.dart';
 import '../../models/academic_year_model.dart';
 import '../../providers/academic_year_provider.dart';
 import '../../widgets/app_alerts.dart';
@@ -167,8 +168,9 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
     super.dispose();
   }
 
-  Color _statusColor(String status) =>
-      status == 'ດໍາເນີນການ' ? AppColors.success : AppColors.mutedForeground;
+  Color _statusColor(String status) => isActiveAcademicStatus(status)
+      ? AppColors.success
+      : AppColors.mutedForeground;
 
   @override
   Widget build(BuildContext context) {
@@ -222,7 +224,7 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
             children: [
               Expanded(
                 child: AppDataTable<AcademicYearModel>(
-                  data: isLoading ? _getMockAcademicYears() : items,
+                  data: items,
                   columns: columns,
                   onAdd: _openAdd,
                   onEdit: _openEdit,
@@ -241,19 +243,6 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
     );
   }
 
-  List<AcademicYearModel> _getMockAcademicYears() {
-    return List.generate(
-      5,
-      (index) => AcademicYearModel(
-        academicId: '${1000 + index + 1}',
-        academicYear: '202${index + 4}-202${index + 5}',
-        startDate: '01-09-202${index + 4}',
-        endDate: '31-05-202${index + 5}',
-        academicStatus: index % 2 == 0 ? 'ດໍາເນີນການ' : 'ສິ້ນສຸດ',
-      ),
-    );
-  }
-
   bool get _isFormValid {
     return _yearController.text.isNotEmpty &&
         _startDateController.text.isNotEmpty &&
@@ -263,9 +252,7 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
   bool get _hasActiveAcademicYear {
     final academicYears = ref.read(academicYearProvider).academicYears;
     return academicYears.any(
-      (item) =>
-          item.academicStatus == 'ດໍາເນີນການ' ||
-          item.academicStatus == 'ACTIVE',
+      (item) => isActiveAcademicStatus(item.academicStatus),
     );
   }
 

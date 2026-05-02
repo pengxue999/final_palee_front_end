@@ -27,8 +27,8 @@ class _ReportAssessmentScreenState
     extends ConsumerState<ReportAssessmentScreen> {
   static const _semesters = [
     {'value': 'all', 'label': 'ທັງໝົດ'},
-    {'value': 'Semester 1', 'label': 'ກາງພາກ'},
-    {'value': 'Semester 2', 'label': 'ທ້າຍພາກ'},
+    {'value': 'MIDTERM', 'label': 'ກາງພາກ'},
+    {'value': 'FINAL', 'label': 'ທ້າຍພາກ'},
   ];
   static const _rankOptions = ['1', '2', '3'];
 
@@ -44,9 +44,9 @@ class _ReportAssessmentScreenState
 
   String _semesterLabel(String semester) {
     switch (semester) {
-      case 'Semester 1':
+      case 'MIDTERM':
         return 'ກາງພາກ';
-      case 'Semester 2':
+      case 'FINAL':
         return 'ທ້າຍພາກ';
       case 'all':
         return 'ທັງໝົດ';
