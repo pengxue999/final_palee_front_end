@@ -10,6 +10,7 @@ import 'empty_widget.dart';
 class AppDataTable<T extends Object> extends StatefulWidget {
   final String? title;
   final String? subtitle;
+  final Widget? headerTrailing;
   final List<T> data;
   final List<DataColumnDef<T>> columns;
   final VoidCallback? onAdd;
@@ -27,6 +28,7 @@ class AppDataTable<T extends Object> extends StatefulWidget {
     super.key,
     this.title,
     this.subtitle,
+    this.headerTrailing,
     required this.data,
     required this.columns,
     this.onAdd,
@@ -169,6 +171,7 @@ class _AppDataTableState<T extends Object> extends State<AppDataTable<T>> {
   bool get _hasHeaderContent {
     return widget.searchKeys.isNotEmpty ||
         widget.onAdd != null ||
+        widget.headerTrailing != null ||
         (widget.title?.isNotEmpty ?? false) ||
         widget.subtitle != null;
   }
@@ -211,6 +214,9 @@ class _AppDataTableState<T extends Object> extends State<AppDataTable<T>> {
                 currentPage = 1;
               }),
             ),
+          if (hasSearch && widget.headerTrailing != null)
+            const SizedBox(height: 12),
+          if (widget.headerTrailing != null) widget.headerTrailing!,
           if (hasSearch && widget.onAdd != null) const SizedBox(height: 12),
           if (widget.onAdd != null)
             SizedBox(
@@ -230,6 +236,9 @@ class _AppDataTableState<T extends Object> extends State<AppDataTable<T>> {
             const SizedBox(width: 16),
           ],
           if (hasSearch) _buildSearchField(maxWidth: 400, expanded: true),
+          if (hasSearch && widget.headerTrailing != null)
+            const SizedBox(width: 12),
+          if (widget.headerTrailing != null) widget.headerTrailing!,
           if (hasSearch && widget.onAdd != null) const SizedBox(width: 12),
           if (widget.onAdd != null)
             AppButton(
@@ -246,6 +255,9 @@ class _AppDataTableState<T extends Object> extends State<AppDataTable<T>> {
             const SizedBox(width: 16),
           ],
           if (hasSearch) _buildSearchField(maxWidth: 400),
+          if (hasSearch && widget.headerTrailing != null)
+            const SizedBox(width: 12),
+          if (widget.headerTrailing != null) widget.headerTrailing!,
           if (hasSearch && widget.onAdd != null) const SizedBox(width: 12),
           if (widget.onAdd != null)
             AppButton(
@@ -263,6 +275,9 @@ class _AppDataTableState<T extends Object> extends State<AppDataTable<T>> {
             const SizedBox(width: 16),
           ],
           if (hasSearch) _buildSearchField(maxWidth: 400),
+          if (hasSearch && widget.headerTrailing != null)
+            const SizedBox(width: 12),
+          if (widget.headerTrailing != null) widget.headerTrailing!,
           if (hasSearch && widget.onAdd != null) const SizedBox(width: 12),
           if (widget.onAdd != null)
             AppButton(

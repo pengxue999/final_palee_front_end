@@ -5,8 +5,8 @@ import 'package:palee_elite_training_center/widgets/api_error_handler.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/format_utils.dart';
 import '../../core/utils/registration_receipt_printer.dart';
-import '../../models/fee_model.dart';
 import '../../models/registration_model.dart';
+import '../../providers/academic_year_provider.dart';
 import '../../providers/registration_provider.dart';
 import '../../services/fee_service.dart';
 import '../../services/registration_detail_service.dart';
@@ -15,6 +15,7 @@ import '../../widgets/success_overlay.dart';
 import '../../widgets/app_data_table.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_dropdown.dart';
 import '../../widgets/print_preparation_overlay.dart';
 
 class RegistrationScreen extends ConsumerStatefulWidget {
@@ -25,9 +26,12 @@ class RegistrationScreen extends ConsumerStatefulWidget {
 }
 
 class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
+  static const String _allAcademicYearsValue = '__all_academic_years__';
+
   bool showWizard = false;
   bool showDeleteDialog = false;
   bool _isPreparingPrint = false;
+  String _selectedAcademicYearId = _allAcademicYearsValue;
   RegistrationModel? selectedReg;
   final RegistrationDetailService _registrationDetailService =
       RegistrationDetailService();
@@ -38,6 +42,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       ref.read(registrationProvider.notifier).getRegistrations();
+      ref.read(academicYearProvider.notifier).getAcademicYears();
       if (mounted) {
         final error = ref.read(registrationProvider).error;
         if (error != null) {
@@ -64,8 +69,8 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       final detailsFuture = _registrationDetailService.getRegistrationDetails();
       final feesFuture = _feeService.getFees();
 
-      final details = await detailsFuture;
-      final fees = (await feesFuture).data;
+      await detailsFuture;
+      await feesFuture;
 
       if (!mounted) {
         return;
@@ -94,7 +99,18 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(registrationProvider);
+    final academicYearState = ref.watch(academicYearProvider);
     final registrations = state.registrations;
+    final academicYears = academicYearState.academicYears;
+    final filteredRegistrations =
+        _selectedAcademicYearId == _allAcademicYearsValue
+        ? registrations
+        : registrations
+              .where(
+                (registration) =>
+                    registration.academicId == _selectedAcademicYearId,
+              )
+              .toList();
     final isLoading = state.isLoading && state.registrations.isEmpty;
 
     final columns = [
@@ -105,8 +121,14 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
       ),
       DataColumnDef<RegistrationModel>(
         key: 'studentName',
-        label: 'ຊື່ນັກຮຽນ ແລະ ນາມສະກຸນ',
+        label: 'ຊື່ ແລະ ນາມສະກຸນ',
         flex: 3,
+      ),
+      DataColumnDef<RegistrationModel>(
+        key: 'academicYear',
+        label: 'ສົກຮຽນ',
+        flex: 2,
+        render: (v, row) => Text((v as String?)?.isNotEmpty == true ? v! : '-'),
       ),
       DataColumnDef<RegistrationModel>(
         key: 'totalAmount',
@@ -161,7 +183,7 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24),
                   child: AppDataTable<RegistrationModel>(
-                    data: registrations,
+                    data: filteredRegistrations,
                     columns: columns,
                     onAdd: () => context.push('/registration/new'),
                     onPrint: (r) => _printRegistration(r),
@@ -170,6 +192,31 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
                       showDeleteDialog = true;
                     }),
                     searchKeys: const ['studentName', 'registrationId'],
+                    headerTrailing: SizedBox(
+                      width: 220,
+                      child: AppDropdown<String>(
+                        value: _selectedAcademicYearId,
+                        items: [
+                          const DropdownMenuItem<String>(
+                            value: _allAcademicYearsValue,
+                            child: Text('ທຸກສົກຮຽນ'),
+                          ),
+                          ...academicYears.map(
+                            (year) => DropdownMenuItem<String>(
+                              value: year.academicId ?? '',
+                              child: Text(year.academicYear),
+                            ),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          setState(() => _selectedAcademicYearId = value);
+                        },
+                        hint: 'filter ສົກຮຽນ',
+                      ),
+                    ),
                     addLabel: 'ລົງທະບຽນໃໝ່',
                     isLoading: isLoading,
                   ),

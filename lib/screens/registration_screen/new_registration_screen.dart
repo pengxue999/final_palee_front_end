@@ -283,14 +283,13 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
   }
 
   void _handleSave() async {
-    if (_selectedStudent == null || _selectedFeeIds.isEmpty) return;
+    if (_selectedStudent == null ||
+        _selectedFeeIds.isEmpty ||
+        _isPreparingPrint) {
+      return;
+    }
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) =>
-          const Center(child: CircularProgressIndicator()),
-    );
+    setState(() => _isPreparingPrint = true);
 
     final request = RegistrationRequest(
       studentId: _selectedStudent!.id,
@@ -310,12 +309,9 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
         .read(registrationProvider.notifier)
         .createRegistrationAndDetails(request, details);
 
-    if (mounted) Navigator.of(context, rootNavigator: true).pop();
-
     if (success && mounted) {
       final lastReg = ref.read(registrationProvider).registrations.last;
       if (mounted) {
-        setState(() => _isPreparingPrint = true);
         try {
           await showRegistrationPrintDialog(
             context: context,
@@ -340,6 +336,7 @@ class _NewRegistrationScreenState extends ConsumerState<NewRegistrationScreen> {
         ref.read(registrationProvider.notifier).getRegistrations();
       }
     } else if (mounted) {
+      setState(() => _isPreparingPrint = false);
       final error =
           ref.read(registrationProvider).error ??
           'ບັນທຶກບໍ່ສຳເລັດ ກະລຸນາລອງໃໝ່';

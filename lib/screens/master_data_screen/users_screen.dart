@@ -216,14 +216,14 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
       ),
       DataColumnDef<UserModel>(
         key: 'role',
-        label: 'ສິດການໃຊ້ງານ',
+        label: 'ສິດທິ',
         flex: 2,
         render: (context, item) => Text(
           _roleLabel(item.role),
           style: TextStyle(
             color: _roleColor(item.role),
             fontSize: 14,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),

@@ -5,6 +5,8 @@ class RegistrationModel {
   final String? studentId;
   final String studentName;
   final String studentLastname;
+  final String? academicId;
+  final String academicYear;
   final String? discountDescription;
   final double totalAmount;
   final double finalAmount;
@@ -17,6 +19,8 @@ class RegistrationModel {
     this.studentId,
     required this.studentName,
     required this.studentLastname,
+    this.academicId,
+    this.academicYear = '',
     this.discountDescription,
     required this.totalAmount,
     required this.finalAmount,
@@ -38,6 +42,8 @@ class RegistrationModel {
       studentId: json['student_id'] as String?,
       studentName: json['student_name'] as String? ?? '',
       studentLastname: json['student_lastname'] as String? ?? '',
+      academicId: json['academic_id'] as String?,
+      academicYear: json['academic_year'] as String? ?? '',
       discountDescription: localizeDiscountDescription(
         json['discount_description'] as String?,
       ),
@@ -66,6 +72,10 @@ class RegistrationModel {
         return studentName;
       case 'studentLastname':
         return studentLastname;
+      case 'academicId':
+        return academicId ?? '';
+      case 'academicYear':
+        return academicYear;
       case 'discountDescription':
         return discountDescription ?? '-';
       case 'totalAmount':
