@@ -110,7 +110,7 @@ class TeachingLogModel {
       hourly: double.tryParse(json['hourly']?.toString() ?? '0') ?? 0,
       hourlyRate: double.tryParse(json['hourly_rate']?.toString() ?? '0') ?? 0,
       remark: json['remark'] as String?,
-      status: json['status'] as String?,
+      status: localizeTeachingStatus(json['status'] as String?),
       substituteForAssignmentId:
           json['substitute_for_assignment_id'] as String?,
       substituteForTeacherId: json['substitute_for_teacher_id'] as String?,

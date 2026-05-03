@@ -1,5 +1,8 @@
-import 'package:palee_elite_training_center/core/utils/http_helper.dart';
 import 'dart:typed_data';
+
+import 'package:palee_elite_training_center/core/utils/http_helper.dart';
+
+import '../core/utils/enum_localization.dart';
 import '../models/report_models.dart';
 
 class ReportService {
@@ -284,7 +287,7 @@ class ReportService {
     final queryParams = <String, String>{};
     if (academicId != null) queryParams['academic_id'] = academicId;
     if (month != null) queryParams['month'] = month;
-    if (status != null) queryParams['status'] = status;
+    if (status != null) queryParams['status'] = apiTeachingStatus(status);
     if (teacherId != null) queryParams['teacher_id'] = teacherId;
 
     final queryString = queryParams.entries
@@ -307,7 +310,7 @@ class ReportService {
     final queryParams = <String, String>{'format': format};
     if (academicId != null) queryParams['academic_id'] = academicId;
     if (month != null) queryParams['month'] = month;
-    if (status != null) queryParams['status'] = status;
+    if (status != null) queryParams['status'] = apiTeachingStatus(status);
     if (teacherId != null) queryParams['teacher_id'] = teacherId;
 
     final queryString = queryParams.entries
@@ -329,7 +332,7 @@ class ReportService {
     final queryParams = <String, String>{};
     if (academicId != null) queryParams['academic_id'] = academicId;
     if (month != null) queryParams['month'] = month;
-    if (status != null) queryParams['status'] = status;
+    if (status != null) queryParams['status'] = apiTeachingStatus(status);
     if (teacherId != null) queryParams['teacher_id'] = teacherId;
 
     final queryString = queryParams.entries

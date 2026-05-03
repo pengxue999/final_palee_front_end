@@ -294,7 +294,7 @@ class TeacherAttendanceReportItem {
       levelName: json['level_name'] as String,
       academicYear: json['academic_year'] as String,
       teachingDate: json['teaching_date'] as String?,
-      status: json['status'] as String?,
+      status: localizeTeachingStatus(json['status'] as String?),
       hourly: double.tryParse(json['hourly']?.toString() ?? '0') ?? 0,
       hourlyRate: double.tryParse(json['hourly_rate']?.toString() ?? '0') ?? 0,
       totalAmount:
@@ -368,7 +368,7 @@ class TeacherAttendanceFilters {
       academicId: json['academic_id'] as String?,
       academicYearName: json['academic_year_name'] as String?,
       month: json['month'] as String?,
-      status: json['status'] as String?,
+      status: localizeTeachingStatus(json['status'] as String?),
       teacherId: json['teacher_id'] as String?,
     );
   }
@@ -405,7 +405,9 @@ class TeacherAttendanceSummary {
           double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0,
       byTeacher: Map<String, int>.from(json['by_teacher'] as Map),
       bySubject: Map<String, int>.from(json['by_subject'] as Map),
-      byStatus: Map<String, int>.from(json['by_status'] as Map),
+      byStatus: localizeTeachingStatusStats(
+        Map<String, int>.from(json['by_status'] as Map),
+      ),
     );
   }
 }
