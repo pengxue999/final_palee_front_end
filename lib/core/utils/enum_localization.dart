@@ -127,6 +127,9 @@ String apiSemester(String? value) =>
 String localizeTeachingStatus(String? value) =>
     _toDisplay(value, _teachingStatusLabels);
 
+String apiTeachingStatus(String? value) =>
+    _toApi(value, _teachingStatusLabels, fallback: 'TEACHING');
+
 String localizeUserRole(String? value) => _toDisplay(
   value == null
       ? null

@@ -1,3 +1,5 @@
+import '../core/utils/enum_localization.dart';
+
 class TeachingLogModel {
   final int teachingLogId;
   final String assignmentId;
@@ -116,8 +118,7 @@ class TeachingLogModel {
       substituteForTeacherLastname:
           json['substitute_for_teacher_lastname'] as String?,
       substituteForSubjectName: json['substitute_for_subject_name'] as String?,
-      substituteForLevelName:
-          json['substitute_for_level_name'] as String?,
+      substituteForLevelName: json['substitute_for_level_name'] as String?,
     );
   }
 }
@@ -143,7 +144,7 @@ class TeachingLogRequest {
       'substitute_for_assignment_id': substituteForAssignmentId,
     'hourly': hourly,
     if (remark != null) 'remark': remark,
-    if (status != null) 'status': status,
+    if (status != null) 'status': apiTeachingStatus(status),
   };
 }
 
