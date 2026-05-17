@@ -117,6 +117,8 @@ class AppTextField extends StatefulWidget {
   final FontWeight? fontWeight;
   final bool thousandsSeparator;
   final double? maxValue;
+  final List<TextInputFormatter>? inputFormatters;
+  final String? errorText;
 
   const AppTextField({
     super.key,
@@ -143,6 +145,8 @@ class AppTextField extends StatefulWidget {
     this.fontWeight,
     this.thousandsSeparator = false,
     this.maxValue,
+    this.inputFormatters,
+    this.errorText,
   });
 
   @override
@@ -160,8 +164,10 @@ class _AppTextFieldState extends State<AppTextField>
 
   static const _borderRadius = 10.0;
 
+  String? get _effectiveError => widget.errorText ?? _errorText;
+
   Color get _borderColor {
-    if (_errorText != null) {
+    if (_effectiveError != null) {
       return AppColors.destructive.withOpacity(0.35);
     }
     if (!widget.enabled) {
@@ -186,12 +192,17 @@ class _AppTextFieldState extends State<AppTextField>
   }
 
   List<TextInputFormatter> get _inputFormatters {
+    final custom = widget.inputFormatters ?? [];
     if (widget.thousandsSeparator) {
-      return [_ThousandsSeparatorFormatter(maxValue: widget.maxValue)];
+      return [
+        ...custom,
+        _ThousandsSeparatorFormatter(maxValue: widget.maxValue),
+      ];
     }
     switch (widget.digitOnly) {
       case DigitOnly.integer:
         return [
+          ...custom,
           _NumericRangeFormatter(
             allowDecimal: false,
             maxValue: widget.maxValue,
@@ -199,10 +210,11 @@ class _AppTextFieldState extends State<AppTextField>
         ];
       case DigitOnly.decimal:
         return [
+          ...custom,
           _NumericRangeFormatter(allowDecimal: true, maxValue: widget.maxValue),
         ];
       case null:
-        return [];
+        return custom;
     }
   }
 
@@ -411,7 +423,7 @@ class _AppTextFieldState extends State<AppTextField>
           ),
         ),
 
-        if (_errorText != null) ...[
+        if (_effectiveError != null) ...[
           const SizedBox(height: 5),
           Row(
             children: [
@@ -423,7 +435,7 @@ class _AppTextFieldState extends State<AppTextField>
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
-                  _errorText!,
+                  _effectiveError!,
                   style: TextStyle(
                     fontSize: 12,
                     color: AppColors.destructive.withOpacity(0.9),

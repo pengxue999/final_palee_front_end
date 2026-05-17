@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/enum_localization.dart';
@@ -12,6 +13,26 @@ import '../../widgets/app_text_field.dart';
 import '../../widgets/app_date_field.dart';
 import '../../widgets/app_dropdown.dart';
 import '../../widgets/app_button.dart';
+
+class _AcademicYearInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
+    final limitedDigits = digits.length > 8 ? digits.substring(0, 8) : digits;
+
+    final formatted = limitedDigits.length <= 4
+        ? limitedDigits
+        : '${limitedDigits.substring(0, 4)}-${limitedDigits.substring(4)}';
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
+    );
+  }
+}
 
 class AcademicYearsScreen extends ConsumerStatefulWidget {
   const AcademicYearsScreen({super.key});
@@ -31,6 +52,7 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
   final _startDateController = TextEditingController();
   final _endDateController = TextEditingController();
   String _selectedStatus = 'ດໍາເນີນການ';
+  bool _showValidationErrors = false;
 
   @override
   void initState() {
@@ -51,18 +73,12 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
     _startDateController.clear();
     _endDateController.clear();
     _selectedStatus = 'ດໍາເນີນການ';
+    _showValidationErrors = false;
     selectedItem = null;
     isEditing = false;
   }
 
   void _openAdd() {
-    if (_hasActiveAcademicYear) {
-      AppAlert.warning(
-        context,
-        'ບໍ່ສາມາດເພີ່ມສົກຮຽນໃໝ່ໄດ້ ເນື່ອງຈາກຍັງມີສົກຮຽນທີ່ດໍາເນີນການຢູ່',
-      );
-      return;
-    }
     _resetForm();
     setState(() {
       showAddEditModal = true;
@@ -84,21 +100,122 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
     _endDateController.text = _toIsoDate(item.endDate);
     _selectedStatus = item.academicStatus;
     setState(() {
+      _showValidationErrors = false;
       selectedItem = item;
       showAddEditModal = true;
       isEditing = true;
     });
   }
 
+  DateTime? _parseIsoDateStrict(String value) {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(value)) {
+      return null;
+    }
+
+    final parsed = DateTime.tryParse(value);
+    if (parsed == null) {
+      return null;
+    }
+
+    final normalized =
+        '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
+    return normalized == value ? parsed : null;
+  }
+
+  bool _isValidAcademicYear(String value) {
+    if (!RegExp(r'^\d{4}-\d{4}$').hasMatch(value)) {
+      return false;
+    }
+
+    final parts = value.split('-');
+    final startYear = int.tryParse(parts[0]);
+    final endYear = int.tryParse(parts[1]);
+    if (startYear == null || endYear == null) {
+      return false;
+    }
+
+    return endYear == startYear + 1;
+  }
+
+  String? get _academicYearErrorText {
+    final value = _yearController.text.trim();
+    if (value.isEmpty) {
+      return 'ກະລຸນາປ້ອນສົກຮຽນ';
+    }
+    if (!_isValidAcademicYear(value)) {
+      return 'ຈົ່ງຂຽນຮູບແບບ: 2024-2025, 2025-2026';
+    }
+    return null;
+  }
+
+  String? get _startDateErrorText {
+    final value = _startDateController.text;
+    if (value.isEmpty) {
+      return 'ກະລຸນາເລືອກວັນທີເລີ່ມຮຽນ';
+    }
+    if (_parseIsoDateStrict(value) == null) {
+      return 'ກະລຸນາປ້ອນວັນທີໃຫ້ຖືກຕ້ອງ';
+    }
+    return null;
+  }
+
+  String? get _endDateErrorText {
+    final endValue = _endDateController.text;
+    if (endValue.isEmpty) {
+      return 'ກະລຸນາເລືອກວັນທີສິ້ນສຸດຮຽນ';
+    }
+
+    final endDate = _parseIsoDateStrict(endValue);
+    if (endDate == null) {
+      return 'ກະລຸນາປ້ອນວັນທີໃຫ້ຖືກຕ້ອງ';
+    }
+
+    final startDate = _parseIsoDateStrict(_startDateController.text);
+    if (startDate != null && !endDate.isAfter(startDate)) {
+      return 'ວັນທີສິ້ນສຸດຕ້ອງຫຼາຍກວ່າວັນທີເລີ່ມ';
+    }
+
+    return null;
+  }
+
+  DateTime? get _minimumEndDate {
+    final startDate = _parseIsoDateStrict(_startDateController.text);
+    if (startDate == null) {
+      return null;
+    }
+    return startDate.add(const Duration(days: 1));
+  }
+
+  void _handleAcademicYearChanged(String _) {
+    setState(() {});
+  }
+
+  void _handleStartDateChanged(String _) {
+    final startDate = _parseIsoDateStrict(_startDateController.text);
+    final endDate = _parseIsoDateStrict(_endDateController.text);
+
+    if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
+      _endDateController.clear();
+    }
+
+    setState(() {});
+  }
+
+  void _handleEndDateChanged(String _) {
+    setState(() {});
+  }
+
   Future<void> _save() async {
-    if (_yearController.text.trim().isEmpty ||
-        _startDateController.text.isEmpty ||
-        _endDateController.text.isEmpty) {
+    setState(() {
+      _showValidationErrors = true;
+    });
+
+    if (!_isFormValid) {
       return;
     }
 
     final request = AcademicYearRequest(
-      academicYear: _yearController.text,
+      academicYear: _yearController.text.trim(),
       startDate: _startDateController.text,
       endDate: _endDateController.text,
       academicStatus: _selectedStatus,
@@ -244,16 +361,9 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
   }
 
   bool get _isFormValid {
-    return _yearController.text.isNotEmpty &&
-        _startDateController.text.isNotEmpty &&
-        _endDateController.text.isNotEmpty;
-  }
-
-  bool get _hasActiveAcademicYear {
-    final academicYears = ref.read(academicYearProvider).academicYears;
-    return academicYears.any(
-      (item) => isActiveAcademicStatus(item.academicStatus),
-    );
+    return _academicYearErrorText == null &&
+        _startDateErrorText == null &&
+        _endDateErrorText == null;
   }
 
   Widget _buildFormModal() {
@@ -295,23 +405,39 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
                 hint: '2024-2025',
                 controller: _yearController,
                 required: true,
+                maxLength: 9,
+                keyboardType: TextInputType.number,
+                inputFormatters: [_AcademicYearInputFormatter()],
+                onChanged: _handleAcademicYearChanged,
+                errorText: _showValidationErrors
+                    ? _academicYearErrorText
+                    : null,
               ),
               const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: AppDateField(
-                      label: 'ວັນທີເລີ່ມ',
+                      label: 'ວັນທີເລີ່ມຮຽນ',
                       controller: _startDateController,
                       required: true,
+                      onChanged: _handleStartDateChanged,
+                      errorText: _showValidationErrors
+                          ? _startDateErrorText
+                          : null,
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: AppDateField(
-                      label: 'ວັນທີສິ້ນສຸດ',
+                      label: 'ວັນທີສິ້ນສຸດຮຽນ',
                       controller: _endDateController,
                       required: true,
+                      firstDate: _minimumEndDate,
+                      onChanged: _handleEndDateChanged,
+                      errorText: _showValidationErrors
+                          ? _endDateErrorText
+                          : null,
                     ),
                   ),
                 ],
@@ -326,7 +452,6 @@ class _AcademicYearsScreenState extends ConsumerState<AcademicYearsScreen> {
                 onChanged: (v) => setState(() {
                   if (v != null) _selectedStatus = v;
                 }),
-                required: true,
               ),
             ],
           ),

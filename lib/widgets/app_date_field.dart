@@ -10,6 +10,8 @@ class AppDateField extends StatefulWidget {
   final bool enabled;
   final DateTime? firstDate;
   final DateTime? lastDate;
+  final void Function(String)? onChanged;
+  final String? errorText;
 
   const AppDateField({
     super.key,
@@ -19,6 +21,8 @@ class AppDateField extends StatefulWidget {
     this.enabled = true,
     this.firstDate,
     this.lastDate,
+    this.onChanged,
+    this.errorText,
   });
 
   @override
@@ -32,6 +36,7 @@ class _AppDateFieldState extends State<AppDateField>
   late final TextEditingController _displayController;
   bool _isFocused = false;
   bool _iconHovered = false;
+  String _lastValidIso = '';
 
   @override
   void initState() {
@@ -44,6 +49,9 @@ class _AppDateFieldState extends State<AppDateField>
     _displayController = TextEditingController(
       text: _toDisplay(widget.controller.text),
     );
+    _lastValidIso = _isValidCommittedDate(widget.controller.text)
+        ? widget.controller.text
+        : '';
 
     _focusNode.addListener(() {
       setState(() => _isFocused = _focusNode.hasFocus);
@@ -62,6 +70,9 @@ class _AppDateFieldState extends State<AppDateField>
     final display = _toDisplay(widget.controller.text);
     if (_displayController.text != display) {
       _displayController.text = display;
+    }
+    if (_isValidCommittedDate(widget.controller.text)) {
+      _lastValidIso = widget.controller.text;
     }
   }
 
@@ -92,10 +103,85 @@ class _AppDateFieldState extends State<AppDateField>
     return display;
   }
 
+  DateTime? _parseIsoDate(String iso) {
+    if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(iso)) {
+      return null;
+    }
+
+    final parsed = DateTime.tryParse(iso);
+    if (parsed == null) {
+      return null;
+    }
+
+    final normalized =
+        '${parsed.year.toString().padLeft(4, '0')}-${parsed.month.toString().padLeft(2, '0')}-${parsed.day.toString().padLeft(2, '0')}';
+    return normalized == iso ? parsed : null;
+  }
+
+  DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
+  }
+
+  bool _isInRange(DateTime date) {
+    final dateOnly = _dateOnly(date);
+    final firstDate = widget.firstDate == null
+        ? null
+        : _dateOnly(widget.firstDate!);
+    final lastDate = widget.lastDate == null
+        ? null
+        : _dateOnly(widget.lastDate!);
+
+    if (firstDate != null && dateOnly.isBefore(firstDate)) {
+      return false;
+    }
+    if (lastDate != null && dateOnly.isAfter(lastDate)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool _isValidCommittedDate(String iso) {
+    final parsed = _parseIsoDate(iso);
+    return parsed != null && _isInRange(parsed);
+  }
+
   void _commitDisplay(String display) {
     final iso = _toIso(display);
+    final parsed = _parseIsoDate(iso);
+
+    if (display.isEmpty) {
+      if (widget.controller.text.isNotEmpty) {
+        widget.controller.text = '';
+      }
+      _lastValidIso = '';
+      widget.onChanged?.call('');
+      return;
+    }
+
+    if (parsed != null && !_isInRange(parsed)) {
+      final lastValidDisplay = _toDisplay(_lastValidIso);
+      if (_displayController.text != lastValidDisplay) {
+        _displayController.value = TextEditingValue(
+          text: lastValidDisplay,
+          selection: TextSelection.collapsed(offset: lastValidDisplay.length),
+        );
+      }
+      if (widget.controller.text != _lastValidIso) {
+        widget.controller.text = _lastValidIso;
+        widget.onChanged?.call(_lastValidIso);
+      }
+      return;
+    }
+
     if (widget.controller.text != iso) {
       widget.controller.text = iso;
+      widget.onChanged?.call(iso);
+    } else if (display == _displayController.text) {
+      widget.onChanged?.call(iso);
+    }
+
+    if (parsed != null) {
+      _lastValidIso = iso;
     }
   }
 
@@ -129,6 +215,8 @@ class _AppDateFieldState extends State<AppDateField>
           '${picked.year.toString().padLeft(4, '0')}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}';
       widget.controller.text = iso;
       _displayController.text = _toDisplay(iso);
+      _lastValidIso = iso;
+      widget.onChanged?.call(iso);
       setState(() {});
     }
   }
@@ -137,6 +225,16 @@ class _AppDateFieldState extends State<AppDateField>
     if (!widget.enabled) return Colors.white;
     if (_isFocused) return AppColors.primary.withValues(alpha: 0.04);
     return Colors.white;
+  }
+
+  Color get _borderColor {
+    if (widget.errorText != null) {
+      return AppColors.destructive.withValues(alpha: 0.35);
+    }
+    if (_isFocused) {
+      return AppColors.primary.withValues(alpha: 0.7);
+    }
+    return AppColors.border;
   }
 
   @override
@@ -180,9 +278,7 @@ class _AppDateFieldState extends State<AppDateField>
             color: _fillColor,
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-              color: _isFocused
-                  ? AppColors.primary.withValues(alpha: 0.7)
-                  : AppColors.border,
+              color: _borderColor,
               width: _isFocused ? 1.5 : 1,
             ),
             boxShadow: _isFocused
@@ -275,6 +371,30 @@ class _AppDateFieldState extends State<AppDateField>
             ],
           ),
         ),
+        if (widget.errorText != null) ...[
+          const SizedBox(height: 5),
+          Row(
+            children: [
+              Icon(
+                Icons.error_outline_rounded,
+                size: 12,
+                color: AppColors.destructive.withValues(alpha: 0.9),
+              ),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  widget.errorText!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.destructive.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'NotoSansLao',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }

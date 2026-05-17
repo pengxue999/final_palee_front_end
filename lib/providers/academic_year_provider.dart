@@ -2,8 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/academic_year_model.dart';
 import '../services/academic_year_service.dart';
 
-final academicYearServiceProvider =
-    Provider<AcademicYearService>((_) => AcademicYearService());
+final academicYearServiceProvider = Provider<AcademicYearService>(
+  (_) => AcademicYearService(),
+);
 
 class AcademicYearState {
   final List<AcademicYearModel> academicYears;
@@ -44,10 +45,7 @@ class AcademicYearNotifier extends StateNotifier<AcademicYearState> {
       final response = await _service.getAcademicYears();
       state = state.copyWith(academicYears: response.data, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        error: e.toString(),
-        isLoading: false,
-      );
+      state = state.copyWith(error: e.toString(), isLoading: false);
     }
   }
 
@@ -55,7 +53,10 @@ class AcademicYearNotifier extends StateNotifier<AcademicYearState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _service.getAcademicYearById(academicId);
-      state = state.copyWith(selectedAcademicYear: response.data, isLoading: false);
+      state = state.copyWith(
+        selectedAcademicYear: response.data,
+        isLoading: false,
+      );
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
     }
@@ -64,11 +65,9 @@ class AcademicYearNotifier extends StateNotifier<AcademicYearState> {
   Future<bool> createAcademicYear(AcademicYearRequest request) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final response = await _service.createAcademicYear(request);
-      state = state.copyWith(
-        academicYears: [...state.academicYears, response.data],
-        isLoading: false,
-      );
+      await _service.createAcademicYear(request);
+      final refreshed = await _service.getAcademicYears();
+      state = state.copyWith(academicYears: refreshed.data, isLoading: false);
       return true;
     } catch (e) {
       state = state.copyWith(error: e.toString(), isLoading: false);
@@ -76,7 +75,10 @@ class AcademicYearNotifier extends StateNotifier<AcademicYearState> {
     }
   }
 
-  Future<bool> updateAcademicYear(String academicId, AcademicYearRequest request) async {
+  Future<bool> updateAcademicYear(
+    String academicId,
+    AcademicYearRequest request,
+  ) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final response = await _service.updateAcademicYear(academicId, request);
@@ -117,5 +119,5 @@ class AcademicYearNotifier extends StateNotifier<AcademicYearState> {
 
 final academicYearProvider =
     StateNotifierProvider<AcademicYearNotifier, AcademicYearState>(
-  (ref) => AcademicYearNotifier(ref.read(academicYearServiceProvider)),
-);
+      (ref) => AcademicYearNotifier(ref.read(academicYearServiceProvider)),
+    );
