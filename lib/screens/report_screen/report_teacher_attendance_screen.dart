@@ -594,15 +594,6 @@ class _ReportTeacherAttendanceScreenState
         },
       ),
       DataColumnDef<TeachingLogModel>(
-        key: 'remark',
-        label: 'ໝາຍເຫດ',
-        render: (v, row) => Text(
-          v?.toString() ?? '-',
-          style: const TextStyle(fontSize: 13, color: Colors.grey),
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-      DataColumnDef<TeachingLogModel>(
         key: 'teachingDate',
         label: 'ວັນທີ',
         render: (v, row) =>

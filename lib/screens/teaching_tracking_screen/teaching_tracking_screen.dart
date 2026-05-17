@@ -902,12 +902,6 @@ class _TeachingTrackingScreenState
         render: (v, _) => _buildStatusBadge(v as String?),
       ),
       DataColumnDef(
-        key: 'remark',
-        label: 'ໝາຍເຫດ',
-        render: (v, _) =>
-            Text((v as String?) ?? '-', style: const TextStyle(fontSize: 14)),
-      ),
-      DataColumnDef(
         key: 'teachingDate',
         label: 'ວັນທີ່',
         render: (v, _) =>

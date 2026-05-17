@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:palee_elite_training_center/core/constants/app_colors.dart';
+import 'package:palee_elite_training_center/core/utils/enum_localization.dart';
 import 'package:palee_elite_training_center/models/registration_model.dart';
 import 'package:palee_elite_training_center/models/tuition_payment_model.dart';
 
@@ -91,7 +92,10 @@ class ReceiptDialog extends StatelessWidget {
                     _row('ລະຫັດການຈ່າຍ', payment.tuitionPaymentId),
                     _row('ລ/ທ ລົງທະບຽນ', payment.registrationId),
                     _row('ນັກຮຽນ', payment.studentFullName),
-                    _row('ວິທີຊຳລະ', payment.paymentMethod),
+                    _row(
+                      'ວິທີຊຳລະ',
+                      localizePaymentMethod(payment.paymentMethod),
+                    ),
                     _row('ວັນທີ', payment.payDate),
                     const SizedBox(height: 8),
                     const Divider(),

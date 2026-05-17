@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:palee_elite_training_center/core/constants/app_colors.dart';
+import 'package:palee_elite_training_center/core/utils/enum_localization.dart';
 
 class StatusBadge extends StatelessWidget {
   final String status;
@@ -7,9 +8,27 @@ class StatusBadge extends StatelessWidget {
 
   const StatusBadge({super.key, required this.status, this.padding});
 
+  String _displayStatus() {
+    final localizedRegistration = localizeRegistrationStatus(status);
+    if (localizedRegistration != status) {
+      return localizedRegistration;
+    }
+
+    final localizedPayment = localizePaymentMethod(status);
+    if (localizedPayment != status) {
+      return localizedPayment;
+    }
+
+    return status;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colorTuple = AppColors.statusBackgroundColors[status];
+    final displayStatus = _displayStatus();
+    final colorTuple =
+        AppColors.statusBackgroundColors[displayStatus] ??
+        AppColors.statusBackgroundColors[status] ??
+        AppColors.statusBackgroundColors[status.toLowerCase()];
     final bgColor = colorTuple?.$1 ?? AppColors.warning;
     final textColor = colorTuple?.$2 ?? AppColors.primaryLight;
 
@@ -21,7 +40,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        status,
+        displayStatus,
         style: TextStyle(
           fontSize: 14,
           fontWeight: FontWeight.w500,
